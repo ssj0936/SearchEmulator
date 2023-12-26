@@ -11,12 +11,18 @@ class Contract{
         object OnSearchBtnClick:Event()
         object OnPauseBtnClick:Event()
         object OnResetBtnClick:Event()
-        data class OnBlockClick(val block:Block):Event()
+        data class OnBlockPressed(val block:Block):Event()
+        data class OnScreenMeasured(val widthInDp:Float, val heightInDp:Float):Event()
     }
 
 
     data class State(
         val status:Status,
+
+        val width:Float = 0f,
+        val height:Float = 0f,
+        val blockSize:Float = 0f,
+
         val start:Block? = null,
         val dest:Block? = null,
         val barrier:List<Block> = mutableListOf(),
@@ -25,7 +31,7 @@ class Contract{
     ):BaseState
 
     sealed class Status{
-        object SearchProcessing:Status()
+        object Started:Status()
         object Idle:Status()
         object ConditionsMissing:Status()
     }
