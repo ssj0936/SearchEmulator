@@ -1,5 +1,6 @@
 package com.timothy.searchemulator.ui.emulator
 
+import kotlinx.coroutines.delay
 import java.util.LinkedList
 
 const val MOVEMENT_STEP_IN = 1
@@ -10,12 +11,12 @@ enum class MovementType{
 }
 
 interface SearchStrategy{
-    fun search(sizeW:Int, sizeH:Int, start:Pair<Int, Int>, dest:Pair<Int, Int>, onProcess:(move:MovementType, block:Block)->Unit, onFinish:(isFound:Boolean)->Unit)
+    suspend fun search(sizeW:Int, sizeH:Int, start:Pair<Int, Int>, dest:Pair<Int, Int>, onProcess:(move:MovementType, block:Block)->Unit, onFinish:(isFound:Boolean)->Unit)
 }
 
 val dirs = arrayOf(intArrayOf(0,-1)/*up*/,intArrayOf(1,0)/*right*/,intArrayOf(0,1)/*down*/,intArrayOf(-1,0)/*left*/)
 class SearchBFS:SearchStrategy{
-    override fun search(
+    override suspend fun search(
         sizeW:Int,
         sizeH:Int,
         start: Block,
@@ -32,7 +33,7 @@ class SearchBFS:SearchStrategy{
                 onFinish(true)
                 return
             }
-
+            delay(500)
             for(dir in dirs){
                 val nX = pop.first + dir[0]
                 val nY = pop.second + dir[1]

@@ -1,7 +1,9 @@
 package com.timothy.searchemulator.ui.emulator
 
+import androidx.lifecycle.viewModelScope
 import com.timothy.searchemulator.ui.base.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -61,7 +63,7 @@ class EmulatorViewModel @Inject constructor() :
 
     }
 
-    private fun onStartButtonClick() {
+    private fun onStartButtonClick() = viewModelScope.launch {
         setState { copy(status = Contract.Status.Started) }
         val start = currentState.start!!
         val dest = currentState.dest!!
@@ -90,7 +92,7 @@ class EmulatorViewModel @Inject constructor() :
     private fun onSearchProcessStep(
         movementType: MovementType,
         block: Block
-    )/* = viewModelScope.launch*/ {
+    ) = viewModelScope.launch {
         when (movementType) {
             MovementType.MOVEMENT_STEP_IN -> {
                 setState { copy(path = currentState.path.toMutableList().apply { add(block) }) }

@@ -28,9 +28,7 @@ abstract class BaseViewModel<State:BaseState, Event:BaseEvent, Effect:BaseEffect
     val effect = _effect.asSharedFlow()
 
     init {
-        viewModelScope.launch {
-            event.collect{eventHandle(it)}
-        }
+        subscribeEvents()
     }
 
 
@@ -44,6 +42,13 @@ abstract class BaseViewModel<State:BaseState, Event:BaseEvent, Effect:BaseEffect
 
     fun setEffect(effect: Effect) = viewModelScope.launch {
         _effect.emit(effect)
+    }
+    private fun subscribeEvents(){
+        viewModelScope.launch {
+            event.collect{
+                eventHandle(it)
+            }
+        }
     }
 
     abstract fun createInitState():State
