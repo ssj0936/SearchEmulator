@@ -1,31 +1,39 @@
 package com.timothy.searchemulator.ui.emulator
 
-//import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.vectorResource
@@ -34,6 +42,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.timothy.searchemulator.R
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+
+const val REFRESH_RATE = 600L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,10 +54,19 @@ fun EmulatorPage(
 ){
     val state by viewModel.state.collectAsState()
 
+//    LaunchedEffect(key1 = Unit){
+//        while (isActive){
+//            viewModel.refresh()
+//            delay(REFRESH_RATE)
+//        }
+//    }
+
+
     Scaffold {paddingValues ->
         Box(modifier = Modifier
+            .fillMaxSize()
             .padding(paddingValues)
-            .fillMaxSize()){
+            .windowInsetsPadding(WindowInsets.navigationBars)){
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -55,10 +76,7 @@ fun EmulatorPage(
                 BoardView(
                     state = state,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight()
-                        .weight(1f)
-                        .background(Color.Green))
+                        .fillMaxSize())
             }
         }
     }
@@ -162,28 +180,61 @@ fun BoardView(
 ){
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
-    SideEffect {
-        val screenHeight = with(density){ configuration.screenHeightDp.dp.toPx()}
-        val screenWidth = with(density){configuration.screenWidthDp.dp.toPx()}
-        viewModel.setEvent(Contract.Event.OnScreenMeasured(screenWidth, screenHeight))
-    }
 
-    val screenWidth = state.width
-    val screenHeight = state.height
-    val blockSize = state.blockSize
-    val rowsCnt = (screenHeight / blockSize).toInt()
-    val columnCnt = (screenWidth / blockSize).toInt()
+    var availableW by remember{ mutableStateOf(0) }
+    var availableH by remember{ mutableStateOf(0) }
+//    SideEffect {
+////        val statusBarHeight = with (density) { LocalWindowInsets.current.statusBars.top.toDp() }
+////
+//        val screenHeight = with(density){ configuration.screenHeightDp.dp.toPx()}
+//        val screenWidth = with(density){configuration.screenWidthDp.dp.toPx()}
+//        viewModel.setEvent(Contract.Event.OnScreenMeasured(screenWidth, screenHeight))
+//    }
 
-    Box(modifier = modifier){
-        for(i in 0 until rowsCnt){
-            
-            for(j in 0 until columnCnt){
-
+        val blockSize = state.blockSize
+        val matrixW = state.matrixW
+        val matrixH = state.matrixH
+        Box(modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned { coordinates ->
+                if (coordinates.size.width * coordinates.size.height != availableW * availableH) {
+                    availableW = coordinates.size.width
+                    availableH = coordinates.size.height
+                    viewModel.setEvent(
+                        Contract.Event.OnScreenMeasured(
+                            availableW,
+                            availableH
+                        )
+                    )
+                }
+            }) {
+            Canvas(modifier = Modifier.fillMaxSize()){
+                drawBackground(blockSize, matrixW, matrixH)
             }
         }
+
+}
+
+fun DrawScope.drawBackground(brickSize:Int, matrixW:Int, matrixH:Int){
+    (0 until matrixW).forEach { x->
+        (0 until matrixH).forEach { y->
+            drawUnitBlock(brickSize, x, y)
+        }
     }
+}
 
-
+fun DrawScope.drawUnitBlock(brickSize:Int, x:Int, y:Int, color: Color= Color.Black){
+    val absoluteOffset = Offset(brickSize*x.toFloat(), brickSize*y.toFloat())
+    val padding  = brickSize * 0.05f
+    val outerSize = brickSize - padding*2
+    drawRect(
+        color = color,
+        topLeft = absoluteOffset+ Offset(padding, padding),
+        size= Size(outerSize, outerSize),
+        style = Stroke(outerSize / 30)
+    )
+//    drawPoints(points = listOf(absoluteOffset), pointMode = PointMode.Points, color= Color.Red,strokeWidth = 10f,
+//        cap = StrokeCap.Round)
 }
 
 @Preview(showBackground = true)
