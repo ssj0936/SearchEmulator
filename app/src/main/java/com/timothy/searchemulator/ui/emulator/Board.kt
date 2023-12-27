@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -44,6 +45,7 @@ import com.timothy.searchemulator.R
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import timber.log.Timber
 
 const val REFRESH_RATE = 600L
 
@@ -51,9 +53,10 @@ const val REFRESH_RATE = 600L
 @Composable
 fun EmulatorPage(
     viewModel: EmulatorViewModel = hiltViewModel()
-){
+) {
     val state by viewModel.state.collectAsState()
 
+    Timber.d("state:$state")
 //    LaunchedEffect(key1 = Unit){
 //        while (isActive){
 //            viewModel.refresh()
@@ -62,11 +65,13 @@ fun EmulatorPage(
 //    }
 
 
-    Scaffold {paddingValues ->
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .windowInsetsPadding(WindowInsets.navigationBars)){
+    Scaffold { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+        ) {
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -76,7 +81,8 @@ fun EmulatorPage(
                 BoardView(
                     state = state,
                     modifier = Modifier
-                        .fillMaxSize())
+                        .fillMaxSize()
+                )
             }
         }
     }
@@ -90,32 +96,49 @@ class ControlPanelButtonWrapper(
     val title: String,
     val icon: Int,
     val iconPressed: Int,
-    val id:Int
+    val id: Int
 )
+
 val controlPanelButtonWrappers = listOf(
-    ControlPanelButtonWrapper("Start", R.drawable.ic_play_24, R.drawable.ic_play_circle_pressed_24, ID_BUTTON_START),
-    ControlPanelButtonWrapper("Pause", R.drawable.ic_pause_24, R.drawable.ic_pause_circle_pressed_24, ID_BUTTON_PAUSE),
-    ControlPanelButtonWrapper("Stop", R.drawable.ic_stop_24, R.drawable.ic_stop_circle_pressed_24, ID_BUTTON_STOP)
+    ControlPanelButtonWrapper(
+        "Start",
+        R.drawable.ic_play_24,
+        R.drawable.ic_play_circle_pressed_24,
+        ID_BUTTON_START
+    ),
+    ControlPanelButtonWrapper(
+        "Pause",
+        R.drawable.ic_pause_24,
+        R.drawable.ic_pause_circle_pressed_24,
+        ID_BUTTON_PAUSE
+    ),
+    ControlPanelButtonWrapper(
+        "Stop",
+        R.drawable.ic_stop_24,
+        R.drawable.ic_stop_circle_pressed_24,
+        ID_BUTTON_STOP
+    )
 )
 
 @Composable
 fun ControlPanelButton(
     modifier: Modifier = Modifier,
     data: ControlPanelButtonWrapper,
-    pressed:Boolean = false,
+    pressed: Boolean = false,
     enabled: Boolean = true,
-    onClick:()->Unit
-){
-    Box(modifier = modifier
-        .alpha(if (enabled) 1f else .7f)
-        .clickable(enabled, onClick = onClick)
-    ){
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .alpha(if (enabled) 1f else .7f)
+            .clickable(enabled, onClick = onClick)
+    ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Image(
-                imageVector = ImageVector.vectorResource(id = if(pressed) data.iconPressed else data.icon),
+                imageVector = ImageVector.vectorResource(id = if (pressed) data.iconPressed else data.icon),
                 contentDescription = data.title
             )
 
@@ -133,24 +156,24 @@ fun ControlPanel(
     modifier: Modifier = Modifier,
     status: Contract.Status,
     viewModel: EmulatorViewModel = hiltViewModel()
-){
+) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxWidth()
             .padding(24.dp)
-    ){
+    ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             verticalAlignment = Alignment.CenterVertically,
 
-        ){
+            ) {
             //start
             ControlPanelButton(
                 data = controlPanelButtonWrappers[0],
                 enabled = status == Contract.Status.Idle,
                 pressed = status == Contract.Status.Started,
-                onClick = {viewModel.setEvent(Contract.Event.OnSearchBtnClick)}
+                onClick = { viewModel.setEvent(Contract.Event.OnSearchBtnClick) }
             )
 
             //pause
@@ -158,15 +181,15 @@ fun ControlPanel(
                 data = controlPanelButtonWrappers[1],
                 enabled = status == Contract.Status.Started,
                 pressed = status == Contract.Status.Idle,
-                onClick = {viewModel.setEvent(Contract.Event.OnPauseBtnClick)}
+                onClick = { viewModel.setEvent(Contract.Event.OnPauseBtnClick) }
             )
 
             //stop
             ControlPanelButton(
                 data = controlPanelButtonWrappers[2],
-                enabled = status == Contract.Status.Started,
+                enabled = (status == Contract.Status.Started) || (status == Contract.Status.SearchFinish),
                 pressed = false,
-                onClick = {viewModel.setEvent(Contract.Event.OnResetBtnClick)}
+                onClick = { viewModel.setEvent(Contract.Event.OnResetBtnClick) }
             )
         }
     }
@@ -175,14 +198,14 @@ fun ControlPanel(
 @Composable
 fun BoardView(
     modifier: Modifier,
-    state:Contract.State,
+    state: Contract.State,
     viewModel: EmulatorViewModel = hiltViewModel()
-){
+) {
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
 
-    var availableW by remember{ mutableStateOf(0) }
-    var availableH by remember{ mutableStateOf(0) }
+    var availableW by remember { mutableStateOf(0) }
+    var availableH by remember { mutableStateOf(0) }
 //    SideEffect {
 ////        val statusBarHeight = with (density) { LocalWindowInsets.current.statusBars.top.toDp() }
 ////
@@ -191,48 +214,73 @@ fun BoardView(
 //        viewModel.setEvent(Contract.Event.OnScreenMeasured(screenWidth, screenHeight))
 //    }
 
-        val blockSize = state.blockSize
-        val matrixW = state.matrixW
-        val matrixH = state.matrixH
-        Box(modifier = modifier
-            .fillMaxSize()
-            .onGloballyPositioned { coordinates ->
-                if (coordinates.size.width * coordinates.size.height != availableW * availableH) {
-                    availableW = coordinates.size.width
-                    availableH = coordinates.size.height
-                    viewModel.setEvent(
-                        Contract.Event.OnScreenMeasured(
-                            availableW,
-                            availableH
-                        )
+    val blockSize = state.blockSize
+    val matrixW = state.matrixW
+    val matrixH = state.matrixH
+//    val matrix = state.matrix
+    Box(modifier = modifier
+        .fillMaxSize()
+        .onGloballyPositioned { coordinates ->
+            if (coordinates.size.width * coordinates.size.height != availableW * availableH) {
+                availableW = coordinates.size.width
+                availableH = coordinates.size.height
+                viewModel.setEvent(
+                    Contract.Event.OnScreenMeasured(
+                        availableW,
+                        availableH
                     )
-                }
-            }) {
-            Canvas(modifier = Modifier.fillMaxSize()){
-                drawBackground(blockSize, matrixW, matrixH)
+                )
             }
+        }) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawBackground(state.start, state.dest, state.path, blockSize, matrixW, matrixH)
         }
+    }
 
 }
 
-fun DrawScope.drawBackground(brickSize:Int, matrixW:Int, matrixH:Int){
-    (0 until matrixW).forEach { x->
-        (0 until matrixH).forEach { y->
-            drawUnitBlock(brickSize, x, y)
+fun DrawScope.drawBackground(start:Block?, dest:Block?, path:List<Block>, brickSize: Int, matrixW: Int, matrixH: Int) {
+    Timber.d("drawBackground")
+    Timber.d("start:$start, dest:$dest, path:$path, brickSize:$brickSize, matrixW:$matrixW, matrixH:$matrixH")
+    (0 until matrixW).forEach { x ->
+        (0 until matrixH).forEach { y ->
+            if (x == start?.first && y == start.second)
+                drawUnitBlock(brickSize, x, y, true, Color.Red)
+            else if (x == dest?.first && y == dest.second)
+                drawUnitBlock(brickSize, x, y, true, Color.Green)
+            else if(path.contains(Block(x, y)))
+                drawUnitBlock(brickSize, x, y, true, Color.Yellow)
+            else
+                drawUnitBlock(brickSize, x, y)
         }
     }
 }
 
-fun DrawScope.drawUnitBlock(brickSize:Int, x:Int, y:Int, color: Color= Color.Black){
-    val absoluteOffset = Offset(brickSize*x.toFloat(), brickSize*y.toFloat())
-    val padding  = brickSize * 0.05f
-    val outerSize = brickSize - padding*2
+fun DrawScope.drawUnitBlock(
+    brickSize: Int, x: Int, y: Int,
+    isFilled: Boolean = false,
+    fillColor: Color = Color.Black, outlineColor: Color = Color.Black
+) {
+    val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
+    val padding = brickSize * 0.05f
+    val outerSize = brickSize - padding * 2
+    if (isFilled) {
+        drawRect(
+            color = fillColor,
+            topLeft = absoluteOffset + Offset(padding, padding),
+            size = Size(outerSize, outerSize),
+            style = Fill
+        )
+    }
+
     drawRect(
-        color = color,
-        topLeft = absoluteOffset+ Offset(padding, padding),
-        size= Size(outerSize, outerSize),
+        color = outlineColor,
+        topLeft = absoluteOffset + Offset(padding, padding),
+        size = Size(outerSize, outerSize),
         style = Stroke(outerSize / 30)
     )
+
+
 //    drawPoints(points = listOf(absoluteOffset), pointMode = PointMode.Points, color= Color.Red,strokeWidth = 10f,
 //        cap = StrokeCap.Round)
 }

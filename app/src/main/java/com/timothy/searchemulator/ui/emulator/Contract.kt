@@ -4,7 +4,8 @@ import com.timothy.searchemulator.ui.base.BaseEffect
 import com.timothy.searchemulator.ui.base.BaseEvent
 import com.timothy.searchemulator.ui.base.BaseState
 
-class Block(val x:Int, val y:Int)
+//class Block(val x:Int, val y:Int)
+typealias Block = Pair<Int,Int>
 
 class Contract{
     sealed class Event:BaseEvent{
@@ -30,6 +31,8 @@ class Contract{
         val start:Block? = null,
         val dest:Block? = null,
         val barrier:List<Block> = mutableListOf(),
+
+        val searchStrategy: SearchStrategy = SearchBFS(),
         val pathCnt:Int = 0,
         val path:List<Block> = mutableListOf(),
     ):BaseState
@@ -38,6 +41,7 @@ class Contract{
         object Started:Status()
         object Idle:Status()
         object ConditionsMissing:Status()
+        object SearchFinish:Status()
     }
 
     sealed class Effect:BaseEffect{

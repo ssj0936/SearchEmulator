@@ -18,6 +18,8 @@ abstract class BaseViewModel<State:BaseState, Event:BaseEvent, Effect:BaseEffect
 
     private val _state:MutableStateFlow<State> = MutableStateFlow(initState)
     val state = _state.asStateFlow()
+    val currentState:State
+        get() = _state.value
 
     private val _event:MutableSharedFlow<Event> = MutableSharedFlow()
     val event = _event.asSharedFlow()
