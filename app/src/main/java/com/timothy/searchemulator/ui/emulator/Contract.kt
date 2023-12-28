@@ -4,7 +4,6 @@ import com.timothy.searchemulator.ui.base.BaseEffect
 import com.timothy.searchemulator.ui.base.BaseEvent
 import com.timothy.searchemulator.ui.base.BaseState
 
-//class Block(val x:Int, val y:Int)
 typealias Block = Pair<Int,Int>
 
 class Contract{
@@ -39,6 +38,7 @@ class Contract{
 
     sealed class Status{
         object Started:Status()
+        object Paused:Status()
         object Idle:Status()
         object ConditionsMissing:Status()
         object SearchFinish:Status()

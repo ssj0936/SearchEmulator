@@ -42,8 +42,6 @@ import com.timothy.searchemulator.R
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import timber.log.Timber
 
-const val REFRESH_RATE = 600L
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmulatorPage(
@@ -159,7 +157,7 @@ fun ControlPanel(
             //start
             ControlPanelButton(
                 data = controlPanelButtonWrappers[0],
-                enabled = status == Contract.Status.Idle,
+                enabled = (status == Contract.Status.Idle) || (status == Contract.Status.Paused),
                 pressed = status == Contract.Status.Started,
                 onClick = { viewModel.setEvent(Contract.Event.OnSearchBtnClick) }
             )
@@ -175,7 +173,7 @@ fun ControlPanel(
             //stop
             ControlPanelButton(
                 data = controlPanelButtonWrappers[2],
-                enabled = (status == Contract.Status.Started) || (status == Contract.Status.SearchFinish),
+                enabled = (status == Contract.Status.Started) || (status == Contract.Status.SearchFinish) || (status == Contract.Status.Paused),
                 pressed = false,
                 onClick = { viewModel.setEvent(Contract.Event.OnResetBtnClick) }
             )
