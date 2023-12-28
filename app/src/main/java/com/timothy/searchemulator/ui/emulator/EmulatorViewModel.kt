@@ -3,12 +3,16 @@ package com.timothy.searchemulator.ui.emulator
 import androidx.lifecycle.viewModelScope
 import com.timothy.searchemulator.ui.base.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class EmulatorViewModel @Inject constructor() :
     BaseViewModel<Contract.State, Contract.Event, Contract.Effect>() {
+
+    private var job: Job? = null
+
     override fun createInitState(): Contract.State =
         Contract.State(
             status = Contract.Status.ConditionsMissing,
@@ -63,25 +67,35 @@ class EmulatorViewModel @Inject constructor() :
 
     }
 
-    private fun onStartButtonClick() = viewModelScope.launch {
+    private fun onStartButtonClick() {
         setState { copy(status = Contract.Status.Started) }
         val start = currentState.start!!
         val dest = currentState.dest!!
         val sizeW = currentState.matrixW
         val sizeH = currentState.matrixH
 
-        currentState.searchStrategy.search(
-            sizeW = sizeW,
-            sizeH = sizeH,
-            start = start,
-            dest = dest,
-            onProcess = { movementType, block ->
-                onSearchProcessStep(movementType, block)
-            },
-            onFinish = { isFound ->
-                onSearchFinish(isFound)
+        if(currentState.searchStrategy.isRunning){
+            currentState.searchStrategy.resume()
+        }else {
+            job?.cancel()
+            job = viewModelScope.launch {
+                currentState.searchStrategy.search(
+                    sizeW = sizeW,
+                    sizeH = sizeH,
+                    start = start,
+                    dest = dest,
+                    state = currentState,
+                    onProcess = { movementType, block ->
+                        onSearchProcessStep(movementType, block)
+                    },
+
+                    onPause = {},
+                    onFinish = { isFound ->
+                        onSearchFinish(isFound)
+                    }
+                )
             }
-        )
+        }
     }
 
     private fun onSearchFinish(isFound: Boolean) {
@@ -106,10 +120,13 @@ class EmulatorViewModel @Inject constructor() :
 
 
     private fun onPauseButtonClick() {
+        currentState.searchStrategy.pause()
         setState { copy(status = Contract.Status.Idle) }
     }
 
     private fun onStopButtonClick() {
+        currentState.searchStrategy.isRunning = false
+        job?.cancel()
         setState {
             copy(
                 status = Contract.Status.Idle,

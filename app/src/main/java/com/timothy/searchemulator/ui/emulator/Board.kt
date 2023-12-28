@@ -18,7 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,16 +34,12 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.timothy.searchemulator.R
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import timber.log.Timber
 
 const val REFRESH_RATE = 600L
@@ -57,13 +52,6 @@ fun EmulatorPage(
     val state by viewModel.state.collectAsState()
 
     Timber.d("state:$state")
-//    LaunchedEffect(key1 = Unit){
-//        while (isActive){
-//            viewModel.refresh()
-//            delay(REFRESH_RATE)
-//        }
-//    }
-
 
     Scaffold { paddingValues ->
         Box(
@@ -201,23 +189,11 @@ fun BoardView(
     state: Contract.State,
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
-    val configuration = LocalConfiguration.current
-    val density = LocalDensity.current
-
     var availableW by remember { mutableStateOf(0) }
     var availableH by remember { mutableStateOf(0) }
-//    SideEffect {
-////        val statusBarHeight = with (density) { LocalWindowInsets.current.statusBars.top.toDp() }
-////
-//        val screenHeight = with(density){ configuration.screenHeightDp.dp.toPx()}
-//        val screenWidth = with(density){configuration.screenWidthDp.dp.toPx()}
-//        viewModel.setEvent(Contract.Event.OnScreenMeasured(screenWidth, screenHeight))
-//    }
-
     val blockSize = state.blockSize
     val matrixW = state.matrixW
     val matrixH = state.matrixH
-//    val matrix = state.matrix
     Box(modifier = modifier
         .fillMaxSize()
         .onGloballyPositioned { coordinates ->
@@ -233,57 +209,69 @@ fun BoardView(
             }
         }) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawBackground(state.start, state.dest, state.path, blockSize, matrixW, matrixH)
+            drawBackground(blockSize, matrixW, matrixH)
+            drawBlocks(state.start, state.dest, state.path, blockSize)
         }
     }
 
 }
 
-fun DrawScope.drawBackground(start:Block?, dest:Block?, path:List<Block>, brickSize: Int, matrixW: Int, matrixH: Int) {
-    Timber.d("drawBackground")
-    Timber.d("start:$start, dest:$dest, path:$path, brickSize:$brickSize, matrixW:$matrixW, matrixH:$matrixH")
+fun DrawScope.drawBackground(brickSize: Int, matrixW: Int, matrixH: Int) {
     (0 until matrixW).forEach { x ->
         (0 until matrixH).forEach { y ->
-            if (x == start?.first && y == start.second)
-                drawUnitBlock(brickSize, x, y, true, Color.Red)
-            else if (x == dest?.first && y == dest.second)
-                drawUnitBlock(brickSize, x, y, true, Color.Green)
-            else if(path.contains(Block(x, y)))
-                drawUnitBlock(brickSize, x, y, true, Color.Yellow)
-            else
-                drawUnitBlock(brickSize, x, y)
+                drawUnitBlockOutline(brickSize, x, y)
         }
     }
 }
 
-fun DrawScope.drawUnitBlock(
+fun DrawScope.drawBlocks(start:Block?, dest:Block?, path:List<Block>, brickSize: Int){
+    //start
+    start?.let {
+        drawUnitBlockFilled(brickSize, it.first, it.second, Color.Red)
+    }
+
+    //dest
+    dest?.let {
+        drawUnitBlockFilled(brickSize, it.first, it.second, Color.Green)
+    }
+
+    path.forEach {
+        drawUnitBlockFilled(brickSize, it.first, it.second, Color.Yellow)
+    }
+}
+
+fun DrawScope.drawUnitBlockOutline(
     brickSize: Int, x: Int, y: Int,
-    isFilled: Boolean = false,
-    fillColor: Color = Color.Black, outlineColor: Color = Color.Black
+    color: Color = Color.Black
 ) {
     val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
     val padding = brickSize * 0.05f
     val outerSize = brickSize - padding * 2
-    if (isFilled) {
-        drawRect(
-            color = fillColor,
-            topLeft = absoluteOffset + Offset(padding, padding),
-            size = Size(outerSize, outerSize),
-            style = Fill
-        )
-    }
 
     drawRect(
-        color = outlineColor,
+        color = color,
         topLeft = absoluteOffset + Offset(padding, padding),
         size = Size(outerSize, outerSize),
         style = Stroke(outerSize / 30)
     )
-
-
-//    drawPoints(points = listOf(absoluteOffset), pointMode = PointMode.Points, color= Color.Red,strokeWidth = 10f,
-//        cap = StrokeCap.Round)
 }
+
+fun DrawScope.drawUnitBlockFilled(
+    brickSize: Int, x: Int, y: Int,
+    color: Color = Color.Black
+) {
+    val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
+    val padding = brickSize * 0.05f
+    val outerSize = brickSize - padding * 2
+
+    drawRect(
+        color = color,
+        topLeft = absoluteOffset + Offset(padding, padding),
+        size = Size(outerSize, outerSize),
+        style = Fill
+    )
+}
+
 
 @Preview(showBackground = true)
 @Composable
