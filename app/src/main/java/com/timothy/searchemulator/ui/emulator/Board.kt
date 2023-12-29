@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,7 +40,11 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.timothy.searchemulator.R
+import com.timothy.searchemulator.model.ControlPanelButtonWrapper
+import com.timothy.searchemulator.model.MOVEMENT_SPEED_MAX
+import com.timothy.searchemulator.model.MOVEMENT_SPEED_MIN
+import com.timothy.searchemulator.model.controlPanelButtonWrappers
+import com.timothy.searchemulator.model.getMovementSpeedTick
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import timber.log.Timber
 
@@ -67,44 +73,77 @@ fun EmulatorPage(
                 BoardView(
                     state = state,
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .weight(1f)
                 )
+                BottomControlPanel(state = state)
             }
         }
     }
 }
 
-const val ID_BUTTON_START = 0
-const val ID_BUTTON_PAUSE = 1
-const val ID_BUTTON_STOP = 2
+@Composable
+fun BottomControlPanel(
+    modifier: Modifier = Modifier,
+    state: Contract.State,
+    viewModel: EmulatorViewModel = hiltViewModel(),
+    ){
+    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+        ValueSlideBar(
+            enabled = (viewModel.currentState.status==Contract.Status.Idle),
+            value = state.minSideBlockCnt.toFloat(),
+            title = "size",
+            valueRange = 10f..40f,
+            steps = 2,
+            onValueChange = {viewModel.setEvent(Contract.Event.OnSizeSliderChange(it))}
+        )
 
-class ControlPanelButtonWrapper(
-    val title: String,
-    val icon: Int,
-    val iconPressed: Int,
-    val id: Int
-)
+        ValueSlideBar(
+            value = getMovementSpeedTick(viewModel.currentState.searchProcessDelay),
+            title = "speed",
+            valueRange = MOVEMENT_SPEED_MIN.toFloat()..MOVEMENT_SPEED_MAX.toFloat(),
+            steps = 10,
+            onValueChange = {viewModel.setEvent(Contract.Event.OnSpeedSliderChange(it))}
+        )
+    }
+}
 
-val controlPanelButtonWrappers = listOf(
-    ControlPanelButtonWrapper(
-        "Start",
-        R.drawable.ic_play_24,
-        R.drawable.ic_play_circle_pressed_24,
-        ID_BUTTON_START
-    ),
-    ControlPanelButtonWrapper(
-        "Pause",
-        R.drawable.ic_pause_24,
-        R.drawable.ic_pause_circle_pressed_24,
-        ID_BUTTON_PAUSE
-    ),
-    ControlPanelButtonWrapper(
-        "Stop",
-        R.drawable.ic_stop_24,
-        R.drawable.ic_stop_circle_pressed_24,
-        ID_BUTTON_STOP
-    )
-)
+@Composable
+fun ValueSlideBar(
+    modifier: Modifier = Modifier,
+    enabled: Boolean=true,
+    value:Float,
+    title:String,
+    valueRange:ClosedFloatingPointRange<Float>,
+    steps:Int,
+    onValueChange:(Float)->Unit
+){
+    var sliderPosition by remember { mutableFloatStateOf(value) }
+
+    Row(
+        modifier = modifier,
+
+        verticalAlignment = Alignment.CenterVertically
+    ){
+        //title
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium
+        )
+        
+        Slider(
+            enabled = enabled,
+            value = sliderPosition,
+            valueRange = valueRange,
+            steps = steps,
+            onValueChange = {
+                sliderPosition = it
+                onValueChange(it)
+            }
+        )
+    }
+}
+
 
 @Composable
 fun ControlPanelButton(
@@ -187,8 +226,8 @@ fun BoardView(
     state: Contract.State,
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
-    var availableW by remember { mutableStateOf(0) }
-    var availableH by remember { mutableStateOf(0) }
+    var availableW by remember { mutableIntStateOf(0) }
+    var availableH by remember { mutableIntStateOf(0) }
     val blockSize = state.blockSize
     val matrixW = state.matrixW
     val matrixH = state.matrixH
@@ -217,12 +256,17 @@ fun BoardView(
 fun DrawScope.drawBackground(brickSize: Int, matrixW: Int, matrixH: Int) {
     (0 until matrixW).forEach { x ->
         (0 until matrixH).forEach { y ->
-                drawUnitBlockOutline(brickSize, x, y)
+            drawUnitBlockOutline(brickSize, x, y)
         }
     }
 }
 
 fun DrawScope.drawBlocks(start:Block?, dest:Block?, path:List<Block>, brickSize: Int){
+
+    path.forEach {
+        drawUnitBlockFilled(brickSize, it.first, it.second, Color.Yellow)
+    }
+
     //start
     start?.let {
         drawUnitBlockFilled(brickSize, it.first, it.second, Color.Red)
@@ -231,10 +275,6 @@ fun DrawScope.drawBlocks(start:Block?, dest:Block?, path:List<Block>, brickSize:
     //dest
     dest?.let {
         drawUnitBlockFilled(brickSize, it.first, it.second, Color.Green)
-    }
-
-    path.forEach {
-        drawUnitBlockFilled(brickSize, it.first, it.second, Color.Yellow)
     }
 }
 

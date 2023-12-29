@@ -1,5 +1,7 @@
 package com.timothy.searchemulator.ui.emulator
 
+import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
+import com.timothy.searchemulator.model.getMovementSpeedDelay
 import com.timothy.searchemulator.ui.base.BaseEffect
 import com.timothy.searchemulator.ui.base.BaseEvent
 import com.timothy.searchemulator.ui.base.BaseState
@@ -13,6 +15,9 @@ class Contract{
         object OnResetBtnClick:Event()
         data class OnBlockPressed(val block:Block):Event()
         data class OnScreenMeasured(val widthInPx:Int, val heightInPx:Int):Event()
+
+        data class OnSizeSliderChange(val value:Float):Event()
+        data class OnSpeedSliderChange(val value:Float):Event()
     }
 
 
@@ -23,6 +28,7 @@ class Contract{
         val width:Int = 0,
         val height:Int = 0,
         val blockSize:Int = 0,
+        val minSideBlockCnt:Int = 20,
 
         val matrixW:Int = 0,
         val matrixH:Int = 0,
@@ -34,6 +40,8 @@ class Contract{
         val searchStrategy: SearchStrategy = SearchBFS(),
         val pathCnt:Int = 0,
         val path:List<Block> = mutableListOf(),
+
+        val searchProcessDelay:Long = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
     ):BaseState
 
     sealed class Status{

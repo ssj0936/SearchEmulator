@@ -4,7 +4,6 @@ import kotlinx.coroutines.delay
 import java.lang.IllegalStateException
 import java.util.LinkedList
 
-const val MOVEMENT_SPEED = 300L
 
 enum class MovementType {
     MOVEMENT_STEP_IN, MOVEMENT_REVERSE
@@ -51,6 +50,7 @@ abstract class SearchStrategy {
     }
 
     abstract suspend fun search(
+        state:Contract.State,
         onPause: () -> Unit,
         onProcess: (move: MovementType, block: Block) -> Unit,
         onFinish: (isFound: Boolean) -> Unit
@@ -95,6 +95,7 @@ class SearchBFS : SearchStrategy() {
     }
 
     override suspend fun search(
+        state:Contract.State,
         onPause: () -> Unit,
         onProcess: (move: MovementType, block: Block) -> Unit,
         onFinish: (isFound: Boolean) -> Unit
@@ -103,7 +104,7 @@ class SearchBFS : SearchStrategy() {
         isRunning = true
 
         while (queue.isNotEmpty()) {
-
+            delay(state.searchProcessDelay)
             if (!isPaused) {
                 val pop: Block = queue.poll()!!
                 onProcess(MovementType.MOVEMENT_STEP_IN, pop)
@@ -111,7 +112,6 @@ class SearchBFS : SearchStrategy() {
                     onFinish(true)
                     return
                 }
-                delay(MOVEMENT_SPEED)
                 for (dir in dirs) {
                     val nX = pop.first + dir[0]
                     val nY = pop.second + dir[1]
