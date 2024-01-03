@@ -39,6 +39,7 @@ class Contract{
 
         val searchStrategy: SearchStrategy = SearchBFS(),
         val pathCnt:Int = 0,
+        val passed:List<Block> = mutableListOf(),
         val path:List<Block> = mutableListOf(),
 
         val searchProcessDelay:Long = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())

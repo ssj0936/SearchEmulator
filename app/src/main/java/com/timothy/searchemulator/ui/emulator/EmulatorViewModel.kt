@@ -95,8 +95,8 @@ class EmulatorViewModel @Inject constructor() :
                     onPause = {
                         Timber.d("onPause")
                     },
-                    onFinish = { isFound ->
-                        onSearchFinish(isFound)
+                    onFinish = { isFound, path ->
+                        onSearchFinish(isFound, path)
                     }
                 )
         }
@@ -125,8 +125,8 @@ class EmulatorViewModel @Inject constructor() :
                     onPause = {
                         Timber.d("onPause")
                     },
-                    onFinish = { isFound ->
-                        onSearchFinish(isFound)
+                    onFinish = { isFound, path ->
+                        onSearchFinish(isFound, path)
                     }
                 )
         }
@@ -143,11 +143,18 @@ class EmulatorViewModel @Inject constructor() :
         } else {
             onSearchLaunch()
         }
-        setState { copy(status = Contract.Status.Started) }
+        setState { copy(
+            status = Contract.Status.Started,
+            path = emptyList()
+        )}
     }
 
-    private fun onSearchFinish(isFound: Boolean) {
-        setState { copy(status = Contract.Status.SearchFinish) }
+    private fun onSearchFinish(isFound: Boolean, path: List<Block>?) {
+        setState { copy(
+            status = Contract.Status.SearchFinish,
+            path = path?: emptyList()
+        )}
+
         setEffect(Contract.Effect.OnSearchFinish(isFound))
     }
 
@@ -157,11 +164,11 @@ class EmulatorViewModel @Inject constructor() :
     ) = viewModelScope.launch {
         when (movementType) {
             MovementType.MOVEMENT_STEP_IN -> {
-                setState { copy(path = currentState.path.toMutableList().apply { add(block) }) }
+                setState { copy(passed = currentState.passed.toMutableList().apply { add(block) }) }
             }
 
             MovementType.MOVEMENT_REVERSE -> {
-                setState { copy(path = currentState.path.toMutableList().apply { remove(block) }) }
+                setState { copy(passed = currentState.passed.toMutableList().apply { remove(block) }) }
             }
         }
     }
@@ -178,7 +185,8 @@ class EmulatorViewModel @Inject constructor() :
         setState {
             copy(
                 status = Contract.Status.Idle,
-                path = mutableListOf()
+                passed = emptyList(),
+                path = emptyList()
             )
         }
     }

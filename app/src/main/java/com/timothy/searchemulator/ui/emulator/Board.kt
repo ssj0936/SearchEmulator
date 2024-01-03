@@ -247,7 +247,8 @@ fun BoardView(
         }) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawBackground(blockSize, matrixW, matrixH)
-            drawBlocks(state.start, state.dest, state.path, blockSize)
+            drawBlocks(state.start, state.dest, state.passed, blockSize)
+            drawPath(state.path, blockSize)
         }
     }
 
@@ -261,9 +262,9 @@ fun DrawScope.drawBackground(brickSize: Int, matrixW: Int, matrixH: Int) {
     }
 }
 
-fun DrawScope.drawBlocks(start:Block?, dest:Block?, path:List<Block>, brickSize: Int){
-
-    path.forEach {
+fun DrawScope.drawBlocks(start:Block?, dest:Block?, passed:List<Block>, brickSize: Int){
+    //draw passed
+    passed.forEach {
         drawUnitBlockFilled(brickSize, it.first, it.second, Color.Yellow)
     }
 
@@ -275,6 +276,12 @@ fun DrawScope.drawBlocks(start:Block?, dest:Block?, path:List<Block>, brickSize:
     //dest
     dest?.let {
         drawUnitBlockFilled(brickSize, it.first, it.second, Color.Green)
+    }
+}
+
+fun DrawScope.drawPath(path:List<Block>?,brickSize: Int){
+    path?.forEach {
+        drawUnitBlockFilled(brickSize, it.first, it.second, Color.Gray)
     }
 }
 

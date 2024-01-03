@@ -53,7 +53,7 @@ abstract class SearchStrategy {
         state:Contract.State,
         onPause: () -> Unit,
         onProcess: (move: MovementType, block: Block) -> Unit,
-        onFinish: (isFound: Boolean) -> Unit
+        onFinish: (isFound: Boolean, path:List<Block>?) -> Unit
     )
 
     open fun reset() {
@@ -76,7 +76,7 @@ abstract class SearchStrategy {
 }
 
 class SearchBFS : SearchStrategy() {
-    private lateinit var queue: LinkedList<Block>
+    private lateinit var queue: LinkedList<MutableList<Block>>
     private lateinit var visited: Array<BooleanArray>
 
     override fun reset() {
@@ -86,7 +86,7 @@ class SearchBFS : SearchStrategy() {
     }
 
     override fun init(): SearchStrategy = apply {
-        queue = LinkedList<Block>().apply { offer(start) }
+        queue = LinkedList<MutableList<Block>>().apply { offer(mutableListOf(start)) }
         visited = Array(sizeW) { BooleanArray(sizeH) }.apply {
             this[start.first][start.second] = true
         }
@@ -98,27 +98,29 @@ class SearchBFS : SearchStrategy() {
         state:Contract.State,
         onPause: () -> Unit,
         onProcess: (move: MovementType, block: Block) -> Unit,
-        onFinish: (isFound: Boolean) -> Unit
+        onFinish: (isFound: Boolean, path: List<Block>?) -> Unit
     ) {
         if (!isInit) throw IllegalStateException("not init yet")
         isRunning = true
 
         while (queue.isNotEmpty()) {
             delay(state.searchProcessDelay)
+
             if (!isPaused) {
-                val pop: Block = queue.poll()!!
-                onProcess(MovementType.MOVEMENT_STEP_IN, pop)
-                if (pop == dest) {
-                    onFinish(true)
+                val path = queue.poll()!!
+                val node = path.last()
+                onProcess(MovementType.MOVEMENT_STEP_IN, node)
+                if (node == dest) {
+                    onFinish(true, path)
                     return
                 }
                 for (dir in dirs) {
-                    val nX = pop.first + dir[0]
-                    val nY = pop.second + dir[1]
+                    val nX = node.first + dir[0]
+                    val nY = node.second + dir[1]
                     if (nX !in 0 until sizeW || nY !in 0 until sizeH || visited[nX][nY]) continue
 
                     visited[nX][nY] = true
-                    queue.offer(Block(nX, nY))
+                    queue.offer(path.toMutableList().apply{add(Block(nX, nY))})
                 }
             } else {
                 onPause()
@@ -126,7 +128,7 @@ class SearchBFS : SearchStrategy() {
             }
 
         }
-        onFinish(false)
+        onFinish(false, null)
     }
 
 
