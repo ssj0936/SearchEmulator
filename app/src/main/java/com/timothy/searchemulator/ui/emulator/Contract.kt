@@ -1,7 +1,5 @@
 package com.timothy.searchemulator.ui.emulator
 
-import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
-import com.timothy.searchemulator.model.getMovementSpeedDelay
 import com.timothy.searchemulator.ui.base.BaseEffect
 import com.timothy.searchemulator.ui.base.BaseEvent
 import com.timothy.searchemulator.ui.base.BaseState
@@ -28,21 +26,21 @@ class Contract{
         val width:Int = 0,
         val height:Int = 0,
         val blockSize:Int = 0,
-        val minSideBlockCnt:Int = 20,
+        val minSideBlockCnt:Int,
 
         val matrixW:Int = 0,
         val matrixH:Int = 0,
 
         val start:Block? = null,
         val dest:Block? = null,
-        val barrier:List<Block> = mutableListOf(),
+        val barrier:List<Block> = emptyList(),
 
-        val searchStrategy: SearchStrategy = SearchBFS(),
+        val searchStrategy: SearchStrategy,
         val pathCnt:Int = 0,
-        val passed:List<Block> = mutableListOf(),
-        val path:List<Block> = mutableListOf(),
+        val passed:List<Block> = emptyList(),
+        val path:List<Block> = emptyList(),
 
-        val searchProcessDelay:Long = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
+        val searchProcessDelay:Long
     ):BaseState
 
     sealed class Status{

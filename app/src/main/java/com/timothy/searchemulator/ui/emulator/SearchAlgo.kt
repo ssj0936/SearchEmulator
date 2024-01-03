@@ -27,6 +27,7 @@ abstract class SearchStrategy {
     protected var sizeH: Int = 0
     protected var start: Block = Block(0, 0)
     protected var dest: Block = Block(0, 0)
+    protected var barriers: List<Block> = emptyList()
 
 
     fun setSizeW(sizeW: Int): SearchStrategy = apply {
@@ -43,6 +44,10 @@ abstract class SearchStrategy {
 
     fun setDest(block: Block): SearchStrategy = apply {
         this.dest = block
+    }
+
+    fun setBarriers(barriers: List<Block>): SearchStrategy = apply {
+        this.barriers = barriers
     }
 
     open fun init(): SearchStrategy = apply {
@@ -89,6 +94,10 @@ class SearchBFS : SearchStrategy() {
         queue = LinkedList<MutableList<Block>>().apply { offer(mutableListOf(start)) }
         visited = Array(sizeW) { BooleanArray(sizeH) }.apply {
             this[start.first][start.second] = true
+
+            barriers.forEach { (x,y)->
+                this[x][y] = true
+            }
         }
 
         super.init()

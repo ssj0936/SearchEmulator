@@ -46,6 +46,7 @@ import com.timothy.searchemulator.model.MOVEMENT_SPEED_MIN
 import com.timothy.searchemulator.model.controlPanelButtonWrappers
 import com.timothy.searchemulator.model.getMovementSpeedTick
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
+import com.timothy.searchemulator.ui.theme.color
 import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,7 +89,9 @@ fun BottomControlPanel(
     state: Contract.State,
     viewModel: EmulatorViewModel = hiltViewModel(),
     ){
-    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+    Column(modifier = modifier
+        .fillMaxWidth()
+        .padding(horizontal = 24.dp)) {
         ValueSlideBar(
             enabled = (viewModel.currentState.status==Contract.Status.Idle),
             value = state.minSideBlockCnt.toFloat(),
@@ -228,6 +231,15 @@ fun BoardView(
 ) {
     var availableW by remember { mutableIntStateOf(0) }
     var availableH by remember { mutableIntStateOf(0) }
+
+    val colorBlockBackgroundColor = MaterialTheme.color.colorBlockBackground
+    val colorBlockStart = MaterialTheme.color.colorBlockStart
+    val colorBlockDest = MaterialTheme.color.colorBlockDest
+    val colorBlockBarrier = MaterialTheme.color.colorBlockBarrier
+    val colorBlockPassed = MaterialTheme.color.colorBlockPassed
+    val colorBlockPath = MaterialTheme.color.colorBlockPath
+
+
     val blockSize = state.blockSize
     val matrixW = state.matrixW
     val matrixH = state.matrixH
@@ -246,48 +258,52 @@ fun BoardView(
             }
         }) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawBackground(blockSize, matrixW, matrixH)
-            drawBlocks(state.start, state.dest, state.passed, blockSize)
-            drawPath(state.path, blockSize)
+            drawBackground(blockSize, matrixW, matrixH, colorBlockBackgroundColor)
+            drawPassedBlocks(state.passed, blockSize, colorBlockPassed)
+            drawPath(state.path, blockSize, colorBlockPath)
+            drawBarrier(state.barrier, blockSize, colorBlockBarrier)
+            drawEndPoint(state.start, blockSize, colorBlockStart)
+            drawEndPoint(state.dest, blockSize, colorBlockDest)
         }
     }
 
 }
 
-fun DrawScope.drawBackground(brickSize: Int, matrixW: Int, matrixH: Int) {
+fun DrawScope.drawBackground(brickSize: Int, matrixW: Int, matrixH: Int, color: Color) {
     (0 until matrixW).forEach { x ->
         (0 until matrixH).forEach { y ->
-            drawUnitBlockOutline(brickSize, x, y)
+            drawUnitBlockOutline(brickSize, x, y, color)
         }
     }
 }
 
-fun DrawScope.drawBlocks(start:Block?, dest:Block?, passed:List<Block>, brickSize: Int){
+fun DrawScope.drawEndPoint(position:Block?, brickSize: Int, color: Color){
+    //start
+    position?.let {drawUnitBlockFilled(brickSize, it.first, it.second, color)}
+}
+
+fun DrawScope.drawPassedBlocks(passed:List<Block>, brickSize: Int, color: Color){
     //draw passed
     passed.forEach {
-        drawUnitBlockFilled(brickSize, it.first, it.second, Color.Yellow)
+        drawUnitBlockFilled(brickSize, it.first, it.second, color)
     }
-
-    //start
-    start?.let {
-        drawUnitBlockFilled(brickSize, it.first, it.second, Color.Red)
-    }
-
-    //dest
-    dest?.let {
-        drawUnitBlockFilled(brickSize, it.first, it.second, Color.Green)
+}
+fun DrawScope.drawBarrier(barrier:List<Block>, brickSize: Int, color: Color){
+    //draw passed
+    barrier.forEach {
+        drawUnitBlockFilled(brickSize, it.first, it.second, color)
     }
 }
 
-fun DrawScope.drawPath(path:List<Block>?,brickSize: Int){
+fun DrawScope.drawPath(path:List<Block>?,brickSize: Int, color: Color){
     path?.forEach {
-        drawUnitBlockFilled(brickSize, it.first, it.second, Color.Gray)
+        drawUnitBlockFilled(brickSize, it.first, it.second, color)
     }
 }
 
 fun DrawScope.drawUnitBlockOutline(
     brickSize: Int, x: Int, y: Int,
-    color: Color = Color.Black
+    color: Color
 ) {
     val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
     val padding = brickSize * 0.05f

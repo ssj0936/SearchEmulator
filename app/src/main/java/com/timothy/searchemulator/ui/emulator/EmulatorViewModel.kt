@@ -1,6 +1,7 @@
 package com.timothy.searchemulator.ui.emulator
 
 import androidx.lifecycle.viewModelScope
+import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
 import com.timothy.searchemulator.model.getMovementSpeedDelay
 import com.timothy.searchemulator.ui.base.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,8 +19,18 @@ class EmulatorViewModel @Inject constructor() :
     override fun createInitState(): Contract.State =
         Contract.State(
             status = Contract.Status.ConditionsMissing,
+            minSideBlockCnt = 20,
             start = Block(3, 5),
-            dest = Block(14, 14)
+            dest = Block(14, 14),
+            barrier = listOf(
+                Block(3,2), Block(2,2), Block(1,4),
+                Block(6,2), Block(7,3), Block(7,4), Block(7,5), Block(8,6), Block(9,7),Block(9,8),Block(9,9),
+                Block(2,10),Block(3,10),Block(4,10),Block(5,10),Block(7,10),Block(8,10),
+                Block(12,11),Block(13,11),Block(14,11),Block(12,12),Block(12,13),Block(12,14),Block(12,15),Block(11,16),Block(10,17),Block(10,18),
+            ),
+            searchStrategy = SearchBFS(),
+            searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
+
         )
 
     override fun eventHandle(event: Contract.Event) {
@@ -107,6 +118,7 @@ class EmulatorViewModel @Inject constructor() :
         val dest = currentState.dest!!
         val sizeW = currentState.matrixW
         val sizeH = currentState.matrixH
+        val barrier = currentState.barrier
 
         job?.cancel()
         job = viewModelScope.launch {
@@ -114,6 +126,7 @@ class EmulatorViewModel @Inject constructor() :
                 .setSizeH(sizeH)
                 .setStart(start)
                 .setDest(dest)
+                .setBarriers(barrier)
                 .init()
                 .search(
                     state = currentState,
