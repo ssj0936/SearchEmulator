@@ -1,10 +1,12 @@
 package com.timothy.searchemulator.ui.emulator
 
+import com.timothy.searchemulator.ui.algo.SearchStrategy
 import com.timothy.searchemulator.ui.base.BaseEffect
 import com.timothy.searchemulator.ui.base.BaseEvent
 import com.timothy.searchemulator.ui.base.BaseState
 
 typealias Block = Pair<Int,Int>
+typealias BlockIndex = Int
 
 class Contract{
     sealed class Event:BaseEvent{

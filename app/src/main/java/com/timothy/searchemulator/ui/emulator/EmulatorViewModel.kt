@@ -1,6 +1,8 @@
 package com.timothy.searchemulator.ui.emulator
 
 import androidx.lifecycle.viewModelScope
+import com.timothy.searchemulator.ui.algo.MovementType
+import com.timothy.searchemulator.ui.algo.SearchBFS
 import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
 import com.timothy.searchemulator.model.getMovementSpeedDelay
 import com.timothy.searchemulator.ui.base.BaseViewModel
@@ -98,7 +100,7 @@ class EmulatorViewModel @Inject constructor() :
         job = viewModelScope.launch {
             currentState.searchStrategy
                 .search(
-                    state = currentState,
+                    delayBetweenSteps = currentState.searchProcessDelay,
                     onProcess = { movementType, block ->
                         onSearchProcessStep(movementType, block)
                     },
@@ -129,7 +131,7 @@ class EmulatorViewModel @Inject constructor() :
                 .setBarriers(barrier)
                 .init()
                 .search(
-                    state = currentState,
+                    delayBetweenSteps = currentState.searchProcessDelay,
 
                     onProcess = { movementType, block ->
                         onSearchProcessStep(movementType, block)
