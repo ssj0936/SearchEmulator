@@ -1,9 +1,10 @@
 package com.timothy.searchemulator.ui.emulator
 
-import com.timothy.searchemulator.ui.algo.SearchStrategy
+import com.timothy.searchemulator.ui.emulator.algo.SearchStrategy
 import com.timothy.searchemulator.ui.base.BaseEffect
 import com.timothy.searchemulator.ui.base.BaseEvent
 import com.timothy.searchemulator.ui.base.BaseState
+import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
 
 typealias Block = Pair<Int,Int>
 typealias BlockIndex = Int
@@ -18,6 +19,8 @@ class Contract{
 
         data class OnSizeSliderChange(val value:Float):Event()
         data class OnSpeedSliderChange(val value:Float):Event()
+
+        data class OnSearchStrategyChange(val strategy: SearchAlgo):Event()
     }
 
 

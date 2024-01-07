@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.timothy.searchemulator.ui.emulator.EmulatorPage
+import com.timothy.searchemulator.ui.emulator.compose.EmulatorPage
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import dagger.hilt.android.AndroidEntryPoint
 

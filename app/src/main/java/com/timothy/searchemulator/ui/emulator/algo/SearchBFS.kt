@@ -1,4 +1,4 @@
-package com.timothy.searchemulator.ui.algo
+package com.timothy.searchemulator.ui.emulator.algo
 
 import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.BlockIndex
@@ -28,6 +28,8 @@ class SearchBFS : SearchStrategy() {
 
         super.init()
     }
+
+    override fun getType(): SearchAlgo = SearchAlgo.SEARCH_BFS
 
     override suspend fun search(
         delayBetweenSteps : Long,

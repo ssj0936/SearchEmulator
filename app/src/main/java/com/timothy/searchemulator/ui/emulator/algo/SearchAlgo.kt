@@ -1,4 +1,4 @@
-package com.timothy.searchemulator.ui.algo
+package com.timothy.searchemulator.ui.emulator.algo
 
 import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.BlockIndex
@@ -6,6 +6,10 @@ import com.timothy.searchemulator.ui.emulator.BlockIndex
 
 enum class MovementType {
     MOVEMENT_STEP_IN, MOVEMENT_REVERSE
+}
+
+enum class SearchAlgo{
+    SEARCH_BFS, SEARCH_DFS
 }
 
 abstract class SearchStrategy {
@@ -52,6 +56,8 @@ abstract class SearchStrategy {
     open fun init(): SearchStrategy = apply {
         isInit = true
     }
+
+    abstract fun getType():SearchAlgo
 
     abstract suspend fun search(
         delayBetweenSteps: Long,

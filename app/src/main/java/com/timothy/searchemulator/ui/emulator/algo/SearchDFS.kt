@@ -1,7 +1,9 @@
-package com.timothy.searchemulator.ui.algo
+package com.timothy.searchemulator.ui.emulator.algo
 
 import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.BlockIndex
+import kotlinx.coroutines.delay
+import timber.log.Timber
 import java.lang.IllegalStateException
 import java.util.LinkedList
 
@@ -23,6 +25,8 @@ class SearchDFS : SearchStrategy()  {
         super.init()
     }
 
+    override fun getType(): SearchAlgo = SearchAlgo.SEARCH_DFS
+
     override suspend fun search(
         delayBetweenSteps: Long,
         onPause: () -> Unit,
@@ -33,8 +37,11 @@ class SearchDFS : SearchStrategy()  {
             throw IllegalStateException("not init yet")
         isRunning = true
 
-        fun dfs(node:Block){
+        suspend fun dfs(node:Block){
+            Timber.d("node:$node")
             if(!isPaused){
+                delay(delayBetweenSteps)
+
                 visited[node.first][node.second] = true
                 path.push(node)
                 onProcess(MovementType.MOVEMENT_STEP_IN, node)
