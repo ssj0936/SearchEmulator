@@ -26,12 +26,14 @@ class EmulatorViewModel @Inject constructor() :
             minSideBlockCnt = 20,
             start = Block(3, 5),
 //            dest = Block(14, 14),
-            dest = Block(6, 5),
+//            dest = Block(6, 5),
+            dest = Block(13, 13),
             barrier = listOf(
                 Block(3,2), Block(2,2), Block(1,4),
                 Block(6,2), Block(7,3), Block(7,4), Block(7,5), Block(8,6), Block(9,7),Block(9,8),Block(9,9),
                 Block(2,10),Block(3,10),Block(4,10),Block(5,10),Block(7,10),Block(8,10),
                 Block(12,11),Block(13,11),Block(14,11),Block(12,12),Block(12,13),Block(12,14),Block(12,15),Block(11,16),Block(10,17),Block(10,18),
+                Block(14,12),Block(14,13),Block(14,14),Block(13,14),
             ),
             searchStrategy = SearchDFS(),
             searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
@@ -65,7 +67,7 @@ class EmulatorViewModel @Inject constructor() :
             }
 
             is Contract.Event.OnSearchStrategyChange->{
-                OnSearchStrategyChange(event.strategy)
+                onSearchStrategyChange(event.strategy)
             }
         }
     }
@@ -234,10 +236,16 @@ class EmulatorViewModel @Inject constructor() :
         }
     }
 
-    private fun OnSearchStrategyChange(strategy:SearchAlgo){
-        setState { copy(searchStrategy = when(strategy){
-            SearchAlgo.SEARCH_BFS-> SearchBFS()
-            SearchAlgo.SEARCH_DFS-> SearchDFS()
-        }) }
+    private fun onSearchStrategyChange(strategy:SearchAlgo){
+        onSearchStop()
+
+        setState {
+            copy(
+                searchStrategy = when(strategy){
+                    SearchAlgo.SEARCH_BFS-> SearchBFS()
+                    SearchAlgo.SEARCH_DFS-> SearchDFS()
+                }
+            )
+        }
     }
 }

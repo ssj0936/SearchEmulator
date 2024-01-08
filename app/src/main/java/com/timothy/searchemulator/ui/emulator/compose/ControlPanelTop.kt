@@ -1,13 +1,14 @@
 package com.timothy.searchemulator.ui.emulator.compose
 
-import android.widget.ToggleButton
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,16 +16,20 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.timothy.searchemulator.R
@@ -184,6 +189,7 @@ fun ToggleButton(
     modifier: Modifier = Modifier,
     toggleButtonOption:ToggleButtonOption,
     selected:Boolean,
+    enabled: Boolean,
     onClick: () -> Unit,
 ){
     Button(
@@ -192,9 +198,11 @@ fun ToggleButton(
         shape = RoundedCornerShape(0),
         colors = ButtonDefaults.buttonColors(
             containerColor = if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
-        )
-
-        ) {
+        ),
+        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp),
+        contentPadding = PaddingValues(0.dp),
+        enabled = enabled
+    ) {
         Row(
             modifier = Modifier.padding(0.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -214,23 +222,32 @@ fun ToggleButton(
         }
     }
 }
+
 @Composable
 fun ToggleButtons(
     modifier: Modifier = Modifier,
     options:List<ToggleButtonOption>,
     state:Contract.State,
-    viewModel: EmulatorViewModel = hiltViewModel()
+    viewModel: EmulatorViewModel = hiltViewModel(),
 ){
     if(options.isEmpty())
         return
 
-    Box(modifier = modifier){
+    Box(
+//        border = BorderStroke(1.dp, Color.DarkGray),
+//        shape = RoundedCornerShape(50),
+        modifier = modifier
+    ){
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ){
             options.forEach {
-                ToggleButton(toggleButtonOption =it , selected = state.searchStrategy.getType() == it.tag) {
+                ToggleButton(
+                    toggleButtonOption = it ,
+                    selected = state.searchStrategy.getType() == it.tag,
+                    enabled = state.status==Contract.Status.Idle
+                ) {
                     viewModel.setEvent(Contract.Event.OnSearchStrategyChange(it.tag))
                 }
             }
