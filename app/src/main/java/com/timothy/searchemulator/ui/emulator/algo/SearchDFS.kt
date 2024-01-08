@@ -37,7 +37,7 @@ class SearchDFS : SearchStrategy()  {
             throw IllegalStateException("not init yet")
         isRunning = true
 
-        suspend fun dfs(node:Block){
+        suspend fun dfs(node:Block):Boolean{
             Timber.d("node:$node")
             if(!isPaused){
                 delay(delayBetweenSteps)
@@ -47,30 +47,32 @@ class SearchDFS : SearchStrategy()  {
                 onProcess(MovementType.MOVEMENT_STEP_IN, node)
 
                 if(node == dest) {
-                    return
+                    return true
                 }else{
                     for (dir in dirs) {
                         val nX = node.first + dir[0]
                         val nY = node.second + dir[1]
                         if (!isValidStep(nX, nY)) continue
 
-                        dfs(Block(nX, nY))
+                        if(dfs(Block(nX, nY)))
+                            return true
                     }
                 }
 
-                visited[node.first][node.second] = false
+//                visited[node.first][node.second] = false
                 path.pop()
+                return false
             }else{
-                return
+                return false
             }
         }
 
         val node:Block = path.peek()?:start
-        dfs(node)
+        val isFoundRoute = dfs(node)
 
-        if(path.isEmpty()){
+        if(!isFoundRoute && path.isEmpty()){
             onFinish(false, null)
-        }else if(path.peek() == dest){
+        }else if(isFoundRoute){
             onFinish(true, path)
         }else{
             onPause()
