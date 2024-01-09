@@ -12,8 +12,12 @@ class SearchBFS : SearchStrategy() {
 
     override fun reset() {
         super.reset()
-        queue.clear()
-        visited.all { false }
+
+        if(this::queue.isInitialized)
+            queue.clear()
+
+        if(this::visited.isInitialized)
+            visited.all { false }
     }
 
     override fun init(): SearchStrategy = apply {

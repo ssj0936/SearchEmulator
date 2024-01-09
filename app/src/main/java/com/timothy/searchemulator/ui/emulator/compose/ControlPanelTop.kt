@@ -8,15 +8,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,12 +26,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.timothy.searchemulator.R
 import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
@@ -40,9 +41,7 @@ import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
 import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
-import com.timothy.searchemulator.ui.emulator.algo.SearchStrategy
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
-import com.timothy.searchemulator.ui.theme.color
 
 const val ID_BUTTON_START = 0
 const val ID_BUTTON_PAUSE = 1
@@ -94,8 +93,74 @@ fun ControlPanel(
         ) {
             PlayStateControlPanel(status = state.status)
             ToggleButtons(options = searchStrategyButtons, state = state)
+            SegmentedButtons(options = searchStrategyButtons, state = state)
         }
     }
+}
+
+@Composable
+fun SegmentedButtons(
+    modifier: Modifier = Modifier,
+    options: List<ToggleButtonOption>,
+    borderStrokeWidth: Dp = 1.dp,
+    state:Contract.State,
+    viewModel: EmulatorViewModel = hiltViewModel()
+){
+    Row(modifier) {
+        options.forEachIndexed { index, toggleButtonOption ->
+            val selected = state.searchStrategy.getType() == toggleButtonOption.tag
+
+            val buttonsModifier = Modifier
+                .wrapContentSize()
+                .offset(x = if (index == 0) 0.dp else borderStrokeWidth * -1 * index, y = 0.dp)
+                .zIndex(if (selected) 1f else 0f)
+
+            val shape:Shape = when(index){
+                0->RoundedCornerShape(
+                    topStartPercent = 10,
+                    topEndPercent = 0,
+                    bottomStartPercent = 10,
+                    bottomEndPercent = 0
+                )
+
+                options.lastIndex -> RoundedCornerShape(
+                    topStartPercent = 0,
+                    topEndPercent = 10,
+                    bottomStartPercent = 0,
+                    bottomEndPercent = 10
+                )
+
+                else->RoundedCornerShape(
+                    topStartPercent = 0,
+                    topEndPercent = 0,
+                    bottomStartPercent = 0,
+                    bottomEndPercent = 0
+                )
+            }
+
+            val border = BorderStroke(
+                width = borderStrokeWidth,
+                color = if(selected) Color.DarkGray else Color.DarkGray.copy(alpha = .75f)
+            )
+
+            val color = ButtonDefaults.outlinedButtonColors(
+                containerColor = if(selected) Color.LightGray else Color.Transparent
+            )
+
+            OutlinedButton(
+                modifier = buttonsModifier,
+                onClick = {viewModel.setEvent(Contract.Event.OnSearchStrategyChange(toggleButtonOption.tag))},
+                shape = shape,
+                border = border,
+                colors = color
+            ){
+                Text(
+                    text = toggleButtonOption.title
+                )
+            }
+        }
+    }
+
 }
 
 @Composable

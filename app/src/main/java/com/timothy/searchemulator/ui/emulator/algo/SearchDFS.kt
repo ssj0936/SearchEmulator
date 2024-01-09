@@ -11,6 +11,16 @@ class SearchDFS : SearchStrategy()  {
     private lateinit var visited: Array<BooleanArray>
     private lateinit var path : LinkedList<Block>
 
+    override fun reset() {
+        super.reset()
+
+        if(this::path.isInitialized)
+            path.clear()
+
+        if(this::visited.isInitialized)
+            visited.all { false }
+    }
+
     override fun init(): SearchStrategy = apply{
         path = LinkedList<Block>()
 
