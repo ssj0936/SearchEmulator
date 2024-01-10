@@ -6,14 +6,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +41,7 @@ import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
 import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 
+//Radio style control panel
 const val ID_BUTTON_START = 0
 const val ID_BUTTON_PAUSE = 1
 const val ID_BUTTON_STOP = 2
@@ -75,11 +74,22 @@ val controlPanelButtonWrappers = listOf(
     )
 )
 
+//search strategy single-choice buttons
+class ToggleButtonOption(
+    val title: String,
+    val icon: Int? = null,
+    val tag: SearchAlgo
+)
+
+val searchStrategyButtons = listOf<ToggleButtonOption>(
+    ToggleButtonOption("BFS", R.drawable.baseline_search_24, SearchAlgo.SEARCH_BFS),
+    ToggleButtonOption("DFS", R.drawable.baseline_search_24, SearchAlgo.SEARCH_DFS)
+)
+
 @Composable
 fun ControlPanel(
     modifier: Modifier = Modifier,
     state: Contract.State,
-//    viewModel: EmulatorViewModel = hiltViewModel()
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -92,7 +102,6 @@ fun ControlPanel(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             PlayStateControlPanel(status = state.status)
-            ToggleButtons(options = searchStrategyButtons, state = state)
             SegmentedButtons(options = searchStrategyButtons, state = state)
         }
     }
@@ -103,34 +112,36 @@ fun SegmentedButtons(
     modifier: Modifier = Modifier,
     options: List<ToggleButtonOption>,
     borderStrokeWidth: Dp = 1.dp,
-    state:Contract.State,
+    roundedCornerPercent:Int = 50,
+    state: Contract.State,
     viewModel: EmulatorViewModel = hiltViewModel()
-){
+) {
     Row(modifier) {
         options.forEachIndexed { index, toggleButtonOption ->
             val selected = state.searchStrategy.getType() == toggleButtonOption.tag
+            val enabled = state.status==Contract.Status.Idle
 
             val buttonsModifier = Modifier
                 .wrapContentSize()
-                .offset(x = if (index == 0) 0.dp else borderStrokeWidth * -1 * index, y = 0.dp)
+                .offset(x = if (index == 0) 0.dp else -borderStrokeWidth * index, y = 0.dp)
                 .zIndex(if (selected) 1f else 0f)
 
-            val shape:Shape = when(index){
-                0->RoundedCornerShape(
-                    topStartPercent = 10,
+            val shape: Shape = when (index) {
+                0 -> RoundedCornerShape(
+                    topStartPercent = roundedCornerPercent,
                     topEndPercent = 0,
-                    bottomStartPercent = 10,
+                    bottomStartPercent = roundedCornerPercent,
                     bottomEndPercent = 0
                 )
 
                 options.lastIndex -> RoundedCornerShape(
                     topStartPercent = 0,
-                    topEndPercent = 10,
+                    topEndPercent = roundedCornerPercent,
                     bottomStartPercent = 0,
-                    bottomEndPercent = 10
+                    bottomEndPercent = roundedCornerPercent
                 )
 
-                else->RoundedCornerShape(
+                else -> RoundedCornerShape(
                     topStartPercent = 0,
                     topEndPercent = 0,
                     bottomStartPercent = 0,
@@ -140,23 +151,50 @@ fun SegmentedButtons(
 
             val border = BorderStroke(
                 width = borderStrokeWidth,
-                color = if(selected) Color.DarkGray else Color.DarkGray.copy(alpha = .75f)
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = .75f)
             )
 
             val color = ButtonDefaults.outlinedButtonColors(
-                containerColor = if(selected) Color.LightGray else Color.Transparent
+                containerColor = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                disabledContainerColor = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
             )
+
+            val contentColor = if (selected)
+                MaterialTheme.colorScheme.onPrimary.copy(alpha = if(enabled)1f else .35f)
+            else
+                MaterialTheme.colorScheme.primary.copy(alpha = if(enabled)1f else .35f)
 
             OutlinedButton(
                 modifier = buttonsModifier,
-                onClick = {viewModel.setEvent(Contract.Event.OnSearchStrategyChange(toggleButtonOption.tag))},
+                onClick = {
+                    viewModel.setEvent(
+                        Contract.Event.OnSearchStrategyChange(
+                            toggleButtonOption.tag
+                        )
+                    )
+                },
                 shape = shape,
                 border = border,
-                colors = color
-            ){
-                Text(
-                    text = toggleButtonOption.title
-                )
+                colors = color,
+                enabled = enabled
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = toggleButtonOption.title,
+                        color = contentColor
+                    )
+
+                    toggleButtonOption.icon?.let {
+                        Icon(
+                            painter = painterResource(id = toggleButtonOption.icon),
+                            contentDescription = toggleButtonOption.title,
+                            tint = contentColor
+                        )
+                    }
+                }
             }
         }
     }
@@ -238,92 +276,81 @@ fun ControlPanelButton(
     }
 }
 
-class ToggleButtonOption(
-    val title: String,
-    val icon:Int? = null,
-    val tag:SearchAlgo
-)
 
-val searchStrategyButtons = listOf<ToggleButtonOption>(
-    ToggleButtonOption("BFS", R.drawable.baseline_search_24, SearchAlgo.SEARCH_BFS),
-    ToggleButtonOption("DFS", R.drawable.baseline_search_24, SearchAlgo.SEARCH_DFS)
-)
 
-@Composable
-fun ToggleButton(
-    modifier: Modifier = Modifier,
-    toggleButtonOption:ToggleButtonOption,
-    selected:Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-){
-    Button(
-        modifier = modifier,
-        onClick = onClick,
-        shape = RoundedCornerShape(0),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
-        ),
-        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp),
-        contentPadding = PaddingValues(0.dp),
-        enabled = enabled
-    ) {
-        Row(
-            modifier = Modifier.padding(0.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = toggleButtonOption.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = if(selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
-            )
+//@Composable
+//fun ToggleButton(
+//    modifier: Modifier = Modifier,
+//    toggleButtonOption:ToggleButtonOption,
+//    selected:Boolean,
+//    enabled: Boolean,
+//    onClick: () -> Unit,
+//){
+//    Button(
+//        modifier = modifier,
+//        onClick = onClick,
+//        shape = RoundedCornerShape(0),
+//        colors = ButtonDefaults.buttonColors(
+//            containerColor = if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
+//        ),
+//        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp),
+//        contentPadding = PaddingValues(0.dp),
+//        enabled = enabled
+//    ) {
+//        Row(
+//            modifier = Modifier.padding(0.dp),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            Text(
+//                text = toggleButtonOption.title,
+//                style = MaterialTheme.typography.titleMedium,
+//                color = if(selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
+//            )
+//
+//            if(toggleButtonOption.icon!=null){
+//                Icon(
+//                    painter = painterResource(id = toggleButtonOption.icon),
+//                    contentDescription = toggleButtonOption.title
+//                )
+//            }
+//        }
+//    }
+//}
+//
+//@Composable
+//fun ToggleButtons(
+//    modifier: Modifier = Modifier,
+//    options:List<ToggleButtonOption>,
+//    state:Contract.State,
+//    viewModel: EmulatorViewModel = hiltViewModel(),
+//){
+//    if(options.isEmpty())
+//        return
+//
+//    Box(
+//        modifier = modifier
+//    ){
+//        Row(
+//            modifier = Modifier.padding(12.dp),
+//            verticalAlignment = Alignment.CenterVertically
+//        ){
+//            options.forEach {
+//                ToggleButton(
+//                    toggleButtonOption = it ,
+//                    selected = state.searchStrategy.getType() == it.tag,
+//                    enabled = state.status==Contract.Status.Idle
+//                ) {
+//                    viewModel.setEvent(Contract.Event.OnSearchStrategyChange(it.tag))
+//                }
+//            }
+//        }
+//    }
+//}
 
-            if(toggleButtonOption.icon!=null){
-                Icon(
-                    painter = painterResource(id = toggleButtonOption.icon),
-                    contentDescription = toggleButtonOption.title
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ToggleButtons(
-    modifier: Modifier = Modifier,
-    options:List<ToggleButtonOption>,
-    state:Contract.State,
-    viewModel: EmulatorViewModel = hiltViewModel(),
-){
-    if(options.isEmpty())
-        return
-
-    Box(
-//        border = BorderStroke(1.dp, Color.DarkGray),
-//        shape = RoundedCornerShape(50),
-        modifier = modifier
-    ){
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ){
-            options.forEach {
-                ToggleButton(
-                    toggleButtonOption = it ,
-                    selected = state.searchStrategy.getType() == it.tag,
-                    enabled = state.status==Contract.Status.Idle
-                ) {
-                    viewModel.setEvent(Contract.Event.OnSearchStrategyChange(it.tag))
-                }
-            }
-        }
-    }
-}
-
-fun Modifier.ifThen(condition:Boolean, modifier:Modifier.()->Modifier):Modifier{
-    return if(condition){
+fun Modifier.ifThen(condition: Boolean, modifier: Modifier.() -> Modifier): Modifier {
+    return if (condition) {
         this.then(modifier())
-    }else{
+    } else {
         this
     }
 }
@@ -333,20 +360,45 @@ fun Modifier.ifThen(condition:Boolean, modifier:Modifier.()->Modifier):Modifier{
 @Composable
 fun GreetingPreviewTop() {
     SearchEmulatorTheme {
-        ControlPanel(state = Contract.State(
-            status = Contract.Status.ConditionsMissing,
-            minSideBlockCnt = 20,
-            start = Block(3, 5),
-            dest = Block(14, 14),
-            barrier = listOf(
-                Block(3,2), Block(2,2), Block(1,4),
-                Block(6,2), Block(7,3), Block(7,4), Block(7,5), Block(8,6), Block(9,7),Block(9,8),Block(9,9),
-                Block(2,10),Block(3,10),Block(4,10),Block(5,10),Block(7,10),Block(8,10),
-                Block(12,11),Block(13,11),Block(14,11),Block(12,12),Block(12,13),Block(12,14),Block(12,15),Block(11,16),Block(10,17),Block(10,18),
-            ),
-            searchStrategy = SearchBFS(),
-            searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
+        ControlPanel(
+            state = Contract.State(
+                status = Contract.Status.ConditionsMissing,
+                minSideBlockCnt = 20,
+                start = Block(3, 5),
+                dest = Block(14, 14),
+                barrier = listOf(
+                    Block(3, 2),
+                    Block(2, 2),
+                    Block(1, 4),
+                    Block(6, 2),
+                    Block(7, 3),
+                    Block(7, 4),
+                    Block(7, 5),
+                    Block(8, 6),
+                    Block(9, 7),
+                    Block(9, 8),
+                    Block(9, 9),
+                    Block(2, 10),
+                    Block(3, 10),
+                    Block(4, 10),
+                    Block(5, 10),
+                    Block(7, 10),
+                    Block(8, 10),
+                    Block(12, 11),
+                    Block(13, 11),
+                    Block(14, 11),
+                    Block(12, 12),
+                    Block(12, 13),
+                    Block(12, 14),
+                    Block(12, 15),
+                    Block(11, 16),
+                    Block(10, 17),
+                    Block(10, 18),
+                ),
+                searchStrategy = SearchBFS(),
+                searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
 
-        ))
+            )
+        )
     }
 }
