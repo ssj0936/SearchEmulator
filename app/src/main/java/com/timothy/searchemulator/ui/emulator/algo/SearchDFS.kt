@@ -7,27 +7,37 @@ import timber.log.Timber
 import java.lang.IllegalStateException
 import java.util.LinkedList
 
-class SearchDFS : SearchStrategy()  {
+class SearchDFS : SearchStrategy() {
     private lateinit var visited: Array<BooleanArray>
-    private lateinit var path : LinkedList<Block>
+    private lateinit var stack: LinkedList<Block>
+    private lateinit var prev: Array<Array<Block?>>
 
     override fun reset() {
         super.reset()
 
-        if(this::path.isInitialized)
-            path.clear()
+        if (this::visited.isInitialized)
+            for(rowIndex in visited.indices){
+                for(columnIndex in visited[rowIndex].indices){
+                    visited[rowIndex][columnIndex] = false
+                }
+            }
 
-        if(this::visited.isInitialized)
-            visited.all { false }
+        if(this::stack.isInitialized)
+            stack.clear()
+
+        if (this::prev.isInitialized)
+            for(rowIndex in prev.indices){
+                for(columnIndex in prev[rowIndex].indices){
+                    prev[rowIndex][columnIndex] = null
+                }
+            }
     }
 
-    override fun init(): SearchStrategy = apply{
-        path = LinkedList<Block>()
-
+    override fun init(): SearchStrategy = apply {
+        stack = LinkedList<Block>().apply { push(start) }
+        prev = Array(sizeW) { Array(sizeH){null} }
         visited = Array(sizeW) { BooleanArray(sizeH) }.apply {
-            this[start.first][start.second] = true
-
-            barriers.forEach { (x,y)->
+            barriers.forEach { (x, y) ->
                 this[x][y] = true
             }
         }
@@ -47,47 +57,46 @@ class SearchDFS : SearchStrategy()  {
             throw IllegalStateException("not init yet")
         isRunning = true
 
-        suspend fun dfs(node:Block):Boolean{
-            Timber.d("node:$node")
+        while (stack.isNotEmpty()){
+            delay(delayBetweenSteps)
+
             if(!isPaused){
-                delay(delayBetweenSteps)
-
-                visited[node.first][node.second] = true
-                path.push(node)
-                onProcess(MovementType.MOVEMENT_STEP_IN, node)
-
-                if(node == dest) {
-                    return true
-                }else{
-                    for (dir in dirs) {
-                        val nX = node.first + dir[0]
-                        val nY = node.second + dir[1]
-                        if (!isValidStep(nX, nY)) continue
-
-                        if(dfs(Block(nX, nY)))
-                            return true
+                val pop = stack.pop()
+                if(visited[pop.first][pop.second]) continue
+                if(pop == dest){
+                    val path = mutableListOf<Block>()
+                    var ptr = dest
+                    while (ptr!=start){
+                        path.add(ptr.copy())
+                        ptr = prev[ptr.first][ptr.second]!!
                     }
+                    path.apply {
+                        add(start.copy())
+                        reverse()
+                    }
+
+                    onFinish(true, path)
+                    return
                 }
 
-//                visited[node.first][node.second] = false
-                path.pop()
-                return false
+                visited[pop.first][pop.second] = true
+                onProcess(MovementType.MOVEMENT_STEP_IN, pop)
+
+                for (dir in dirs) {
+                    val nX = pop.first + dir[0]
+                    val nY = pop.second + dir[1]
+                    if (!isValidStep(nX, nY)) continue
+
+                    stack.push(Block(nX, nY))
+                    prev[nX][nY] = pop
+                }
             }else{
-                return false
+                onPause()
+                return
             }
         }
 
-        val node:Block = path.peek()?:start
-        val isFoundRoute = dfs(node)
-
-        if(!isFoundRoute && path.isEmpty()){
-            onFinish(false, null)
-        }else if(isFoundRoute){
-            onFinish(true, path)
-        }else{
-            onPause()
-        }
-
+        onFinish(false, null)
     }
 
     override fun isValidStep(x: BlockIndex, y: BlockIndex): Boolean {
