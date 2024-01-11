@@ -41,12 +41,6 @@ fun BoardView(
     var availableW by remember { mutableIntStateOf(0) }
     var availableH by remember { mutableIntStateOf(0) }
 
-    val colorBlockBackgroundColor = MaterialTheme.color.colorBlockBackground
-    val colorBlockStart = MaterialTheme.color.colorBlockStart
-    val colorBlockDest = MaterialTheme.color.colorBlockDest
-    val colorBlockBarrier = MaterialTheme.color.colorBlockBarrier
-    val colorBlockPassed = MaterialTheme.color.colorBlockPassed
-    val colorBlockPath = MaterialTheme.color.colorBlockPath
 
     val blockSize = state.blockSize
     val matrixW = state.matrixW
@@ -95,14 +89,18 @@ fun BoardView(
                 )
             }
         }) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawBackground(blockSize, matrixW, matrixH, colorBlockBackgroundColor)
-            drawPassedBlocks(state.passed, blockSize, colorBlockPassed)
-            drawPath(state.path, blockSize, colorBlockPath)
-            drawBarrier(state.barrier.toList(), blockSize, colorBlockBarrier)
-            drawEndPoint(state.start, blockSize, colorBlockStart)
-            drawEndPoint(state.dest, blockSize, colorBlockDest)
+        with(MaterialTheme.color){
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawBackground(blockSize, matrixW, matrixH, this@with.colorBlockBackground)
+                drawPassedBlocks(state.passed, blockSize, this@with.colorBlockPassed)
+                drawPath(state.path, blockSize, this@with.colorBlockPath)
+                drawBarrier(state.barrier.toList(), matrixW, matrixH, blockSize, this@with.colorBlockBarrier)
+                drawEndPoint(state.start, blockSize, this@with.colorBlockStart)
+                drawEndPoint(state.dest, blockSize, this@with.colorBlockDest)
+            }
         }
+
+
     }
 }
 
@@ -175,10 +173,11 @@ fun DrawScope.drawPassedBlocks(passed: List<Block>, brickSize: Int, color: Color
     }
 }
 
-fun DrawScope.drawBarrier(barrier: List<Block>, brickSize: Int, color: Color) {
+fun DrawScope.drawBarrier(barrier: List<Block>, matrixW: Int, matrixH: Int, brickSize: Int, color: Color) {
     //draw passed
     barrier.forEach {
-        drawUnitBlockFilled(brickSize, it.first, it.second, color)
+        if(it.first in 0 until matrixW && it.second in 0 until matrixH)
+            drawUnitBlockFilled(brickSize, it.first, it.second, color)
     }
 }
 

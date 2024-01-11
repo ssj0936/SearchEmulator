@@ -67,6 +67,7 @@ abstract class SearchStrategy {
     )
 
     abstract fun isValidStep(x: BlockIndex, y: BlockIndex):Boolean
+    fun isValid(x: BlockIndex, y: BlockIndex):Boolean = (x in 0 until sizeW && y in 0 until sizeH)
 
     open fun reset() {
         isPaused = false

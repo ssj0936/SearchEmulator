@@ -25,8 +25,9 @@ class SearchBFS : SearchStrategy() {
         visited = Array(sizeW) { BooleanArray(sizeH) }.apply {
             this[start.first][start.second] = true
 
-            barriers.forEach { (x,y)->
-                this[x][y] = true
+            barriers.forEach { (x, y) ->
+                if(isValid(x,y))
+                    this[x][y] = true
             }
         }
 
@@ -75,6 +76,6 @@ class SearchBFS : SearchStrategy() {
     }
 
     override fun isValidStep(x: BlockIndex, y: BlockIndex): Boolean {
-        return x in 0 until sizeW && y in 0 until sizeH && !visited[x][y]
+        return isValid(x,y) && !visited[x][y]
     }
 }

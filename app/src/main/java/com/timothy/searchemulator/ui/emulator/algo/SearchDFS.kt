@@ -3,8 +3,6 @@ package com.timothy.searchemulator.ui.emulator.algo
 import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.BlockIndex
 import kotlinx.coroutines.delay
-import timber.log.Timber
-import java.lang.IllegalStateException
 import java.util.LinkedList
 
 class SearchDFS : SearchStrategy() {
@@ -38,7 +36,8 @@ class SearchDFS : SearchStrategy() {
         prev = Array(sizeW) { Array(sizeH){null} }
         visited = Array(sizeW) { BooleanArray(sizeH) }.apply {
             barriers.forEach { (x, y) ->
-                this[x][y] = true
+                if(isValid(x,y))
+                    this[x][y] = true
             }
         }
 
@@ -58,7 +57,9 @@ class SearchDFS : SearchStrategy() {
         isRunning = true
 
         while (stack.isNotEmpty()){
-            delay(delayBetweenSteps)
+            val peekVisited = with(stack.peek()){visited[this.first][this.second]}
+            if(!peekVisited)
+                delay(delayBetweenSteps)
 
             if(!isPaused){
                 val pop = stack.pop()
@@ -100,6 +101,6 @@ class SearchDFS : SearchStrategy() {
     }
 
     override fun isValidStep(x: BlockIndex, y: BlockIndex): Boolean {
-        return x in 0 until sizeW && y in 0 until sizeH && !visited[x][y]
+        return isValid(x,y) && !visited[x][y]
     }
 }
