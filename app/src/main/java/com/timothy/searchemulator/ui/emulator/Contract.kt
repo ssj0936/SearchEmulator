@@ -24,9 +24,9 @@ class Contract{
         data class OnSearchStrategyChange(val strategy: SearchAlgo):Event()
 
         //drawing
-        data class OnBarrierDrawingStart(val offset: Offset):Event()
-        data class OnBarrierDrawing(val block: Block):Event()
-        object OnBarrierDrawingEnd:Event()
+        data class OnDraggingStart(val offset: Offset):Event()
+        data class OnDragging(val block: Block):Event()
+        object OnDraggingEnd:Event()
 
         object OnBarrierClearButtonClicked:Event()
     }
@@ -60,13 +60,18 @@ class Contract{
         val searchProcessDelay:Long
     ):BaseState
 
+    interface DrawingType
+
     sealed class Status{
         object Started:Status()
         object Paused:Status()
         object Idle:Status()
 //        object ConditionsMissing:Status()
         object SearchFinish:Status()
-        object BarrierDrawing:Status()
+
+        object BarrierDrawing:Status(),DrawingType
+        object StartDragging:Status(),DrawingType
+        object DestDragging:Status(),DrawingType
     }
 
     sealed class Effect:BaseEffect{

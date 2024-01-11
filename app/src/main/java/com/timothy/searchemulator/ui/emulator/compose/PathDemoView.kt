@@ -2,16 +2,11 @@ package com.timothy.searchemulator.ui.emulator.compose
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.FloatState
-import androidx.compose.runtime.MutableFloatState
-import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,24 +50,20 @@ fun BoardView(
         .pointerInput(Unit) {
             detectDragGestures(
                 onDragStart = {
-                    viewModel.setEvent(Contract.Event.OnBarrierDrawingStart(it))
-                    Timber.d("onDragStart:$it")
+                    viewModel.setEvent(Contract.Event.OnDraggingStart(it))
                 },
                 onDragEnd = {
-                    viewModel.setEvent(Contract.Event.OnBarrierDrawingEnd)
+                    viewModel.setEvent(Contract.Event.OnDraggingEnd)
                     drawingBlockX = 0
                     drawingBlockY = 0
-                    Timber.d("onDragEnd")
                 }
             ) { change, _ ->
                 val hoveringX = (change.position.x/viewModel.currentState.blockSize).toInt()
                 val hoveringY = (change.position.y/viewModel.currentState.blockSize).toInt()
                 if(hoveringX>=0 && hoveringY >=0 && ((hoveringX != drawingBlockX) || (hoveringY != drawingBlockY))){
-                    Timber.d("offset:${change.position}, blockSize:${viewModel.currentState.blockSize}")
                     drawingBlockX = hoveringX
                     drawingBlockY = hoveringY
-                    viewModel.setEvent(Contract.Event.OnBarrierDrawing(Block(drawingBlockX, drawingBlockY)))
-                    Timber.d("drag change:($drawingBlockX, $drawingBlockY)")
+                    viewModel.setEvent(Contract.Event.OnDragging(Block(drawingBlockX, drawingBlockY)))
                 }
 
             }
@@ -120,36 +111,6 @@ fun Modifier.pointerInputCombine(
                     .then(pointerInputCombine(key1, blocks, index + 1))
             }
         }
-    }
-}
-
-suspend fun PointerInputScope.detectTapping() {
-    this.detectTapGestures(
-        onTap = {
-            Timber.d("tap:$it")
-        }
-    )
-}
-
-
-suspend fun PointerInputScope.detectDragging(
-    state: Contract.State,
-    offsetX:MutableIntState,
-    offsetY: MutableIntState,
-    viewModel: EmulatorViewModel
-) {
-    this.detectDragGestures(
-        onDragStart = {
-//            offsetX.floatValue = it.x
-//            offsetY.floatValue = it.y
-
-            Timber.d("onDragStart:$it")
-        },
-        onDragEnd = {
-            Timber.d("onDragEnd")
-        }
-    ) { change, _ ->
-        Timber.d("drag change:${change.position}")
     }
 }
 

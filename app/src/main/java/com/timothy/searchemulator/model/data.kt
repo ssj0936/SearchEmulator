@@ -22,3 +22,4 @@ fun getMovementSpeedTick(delay:Long):Float{
 
 fun getBoardSize(tick:Float):Int = BOARD_SIZE_BASE * tick.toInt()
 fun getBoardSizeTick(blockCount:Int):Float = blockCount.toFloat()/BOARD_SIZE_BASE
+

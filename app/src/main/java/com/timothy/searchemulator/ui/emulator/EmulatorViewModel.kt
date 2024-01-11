@@ -1,6 +1,5 @@
 package com.timothy.searchemulator.ui.emulator
 
-import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.viewModelScope
 import com.timothy.searchemulator.model.BOARD_SIZE_DEFAULT
 import com.timothy.searchemulator.ui.emulator.algo.MovementType
@@ -9,6 +8,7 @@ import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
 import com.timothy.searchemulator.model.getBoardSize
 import com.timothy.searchemulator.model.getMovementSpeedDelay
 import com.timothy.searchemulator.ui.base.BaseViewModel
+import com.timothy.searchemulator.ui.base.toBlock
 import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
 import com.timothy.searchemulator.ui.emulator.algo.SearchDFS
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,7 +26,7 @@ class EmulatorViewModel @Inject constructor() :
     override fun createInitState(): Contract.State =
         Contract.State(
             status = Contract.Status.Idle,
-            minSideBlockCnt = getBoardSize(BOARD_SIZE_DEFAULT.toFloat()) ,
+            minSideBlockCnt = getBoardSize(BOARD_SIZE_DEFAULT.toFloat()),
             start = Block(3, 5),
             dest = Block(14, 14),
 //            dest = Block(6, 5),
@@ -74,47 +74,69 @@ class EmulatorViewModel @Inject constructor() :
 
             //barrier events
             is Contract.Event.OnBlockPressed -> {}
-            is Contract.Event.OnBarrierDrawingStart -> {
+            is Contract.Event.OnDraggingStart -> {
                 if (currentState.status != Contract.Status.Idle) return
-                onBarrierDraggingStart()
+                onDraggingStart(event)
             }
 
-            is Contract.Event.OnBarrierDrawing -> {
-                if (currentState.status != Contract.Status.BarrierDrawing) return
+            is Contract.Event.OnDraggingEnd -> {
+                if (currentState.status !is Contract.DrawingType) return
+                onDraggingEnd()
+            }
 
+            is Contract.Event.OnDragging -> {
+                if (currentState.status !is Contract.DrawingType) return
                 onBarrierDragging(event.block)
             }
 
-            is Contract.Event.OnBarrierDrawingEnd -> {
-                if (currentState.status != Contract.Status.BarrierDrawing) return
-
-                onBarrierDraggingEnd()
-            }
-
-            is Contract.Event.OnBarrierClearButtonClicked->{
+            is Contract.Event.OnBarrierClearButtonClicked -> {
                 onBarrierClearButtonClicked()
             }
         }
     }
 
-    private fun onBarrierDraggingEnd() {
+    private fun onDraggingEnd() {
         setState { copy(status = Contract.Status.Idle) }
     }
 
-    private fun onBarrierDraggingStart() {
-        setState { copy(status = Contract.Status.BarrierDrawing) }
+    private fun onDraggingStart(event: Contract.Event.OnDraggingStart) {
+        setState {
+            copy(
+                status = when (event.offset.toBlock(currentState.blockSize)) {
+                    currentState.start -> Contract.Status.StartDragging
+                    currentState.dest -> Contract.Status.DestDragging
+                    else -> Contract.Status.BarrierDrawing
+                }
+            )
+        }
     }
 
     private fun onBarrierDragging(block: Block) {
         if (!block.isValidBlock) return
 
-        if (currentState.barrier.contains(block))
-            setState { copy(barrier = barrier.toHashSet().apply { remove(block) }) }
-        else
-            setState { copy(barrier = barrier.toHashSet().apply { add(block) }) }
+        when (currentState.status) {
+            is Contract.Status.StartDragging -> {
+                if (currentState.barrier.contains(block) || block == currentState.dest) return
+                setState { copy(start = block) }
+            }
+
+            is Contract.Status.DestDragging -> {
+                if (currentState.barrier.contains(block) || block == currentState.start) return
+                setState { copy(dest = block) }
+            }
+
+            is Contract.Status.BarrierDrawing -> {
+                if (currentState.barrier.contains(block))
+                    setState { copy(barrier = barrier.toHashSet().apply { remove(block) }) }
+                else
+                    setState { copy(barrier = barrier.toHashSet().apply { add(block) }) }
+            }
+
+            else -> {}
+        }
     }
 
-    private fun onBarrierClearButtonClicked(){
+    private fun onBarrierClearButtonClicked() {
         setState { copy(barrier = hashSetOf()) }
         setEffect(Contract.Effect.OnBarrierCleaned)
     }
@@ -122,25 +144,15 @@ class EmulatorViewModel @Inject constructor() :
     private val Block.isValidBlock: Boolean
         get() = isValidBlock(currentState.matrixW, currentState.matrixH)
 
-    private fun Block.isValidBlock(w:Int, h:Int): Boolean{
+    private fun Block.isValidBlock(w: Int, h: Int): Boolean {
         return this.first in 0 until w
                 && this.second in 0 until h
     }
 
-
-
     private fun onScreenMeasured(height: Int, width: Int) {
         val blockSize = minOf(width, height) / currentState.minSideBlockCnt
-
         val matrixW = (width / blockSize)
         val matrixH = (height / blockSize)
-//        val status = if (currentState.start == null
-//            || currentState.start?.first !in 0 until matrixW
-//            || currentState.start?.second !in 0 until matrixH
-//            || currentState.dest == null
-//            || currentState.dest?.first !in 0 until matrixW
-//            || currentState.dest?.second !in 0 until matrixH
-//        ) Contract.Status.ConditionsMissing else Contract.Status.Idle
 
         setState {
             copy(
@@ -285,19 +297,12 @@ class EmulatorViewModel @Inject constructor() :
         val matrixW = (currentState.width / blockSize)
         val matrixH = (currentState.height / blockSize)
 
-//        val barrier = currentState.barrier.toHashSet().apply {
-//            currentState.barrier.forEach { block->
-//                if(!block.isValidBlock(matrixW, matrixH))
-//                    this.remove(block)
-//            }
-//        }
         setState {
             copy(
                 minSideBlockCnt = minSideBlockCnt,
                 blockSize = blockSize,
                 matrixW = matrixW,
                 matrixH = matrixH,
-//                barrier = barrier
             )
         }
     }
