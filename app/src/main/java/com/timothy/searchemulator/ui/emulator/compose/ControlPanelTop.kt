@@ -6,10 +6,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
@@ -31,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.timothy.searchemulator.R
 import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
 import com.timothy.searchemulator.model.getMovementSpeedDelay
@@ -90,6 +94,7 @@ val searchStrategyButtons = listOf<ToggleButtonOption>(
 fun ControlPanel(
     modifier: Modifier = Modifier,
     state: Contract.State,
+    viewModel: EmulatorViewModel = hiltViewModel()
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -102,8 +107,36 @@ fun ControlPanel(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             PlayStateControlPanel(status = state.status)
-            SegmentedButtons(options = searchStrategyButtons, state = state)
+            Row {
+                SegmentedButtons(options = searchStrategyButtons, state = state)
+                Spacer(modifier = Modifier.width(24.dp))
+                ClearButton(
+                    onClick = { viewModel.setEvent(Contract.Event.OnBarrierClearButtonClicked) },
+                    enabled = viewModel.currentState.status == Contract.Status.Idle
+                )
+            }
+
         }
+    }
+}
+
+@Composable
+fun ClearButton(
+    onClick: () -> Unit,
+    borderStrokeWidth: Dp = 1.dp,
+    enabled: Boolean
+) {
+    OutlinedButton(
+        onClick = onClick,
+        shape = androidx.compose.foundation.shape.CircleShape,
+        enabled = enabled,
+        border = ButtonDefaults.outlinedButtonBorder.copy(width = borderStrokeWidth),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.baseline_cleaning_services_24),
+            contentDescription = null
+        )
     }
 }
 
@@ -112,14 +145,14 @@ fun SegmentedButtons(
     modifier: Modifier = Modifier,
     options: List<ToggleButtonOption>,
     borderStrokeWidth: Dp = 1.dp,
-    roundedCornerPercent:Int = 50,
+    roundedCornerPercent: Int = 50,
     state: Contract.State,
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
     Row(modifier) {
         options.forEachIndexed { index, toggleButtonOption ->
             val selected = state.searchStrategy.getType() == toggleButtonOption.tag
-            val enabled = state.status==Contract.Status.Idle
+            val enabled = state.status == Contract.Status.Idle
 
             val buttonsModifier = Modifier
                 .wrapContentSize()
@@ -151,7 +184,9 @@ fun SegmentedButtons(
 
             val border = BorderStroke(
                 width = borderStrokeWidth,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = .75f)
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(
+                    alpha = .75f
+                )
             )
 
             val color = ButtonDefaults.outlinedButtonColors(
@@ -160,9 +195,9 @@ fun SegmentedButtons(
             )
 
             val contentColor = if (selected)
-                MaterialTheme.colorScheme.onPrimary.copy(alpha = if(enabled)1f else .35f)
+                MaterialTheme.colorScheme.onPrimary.copy(alpha = if (enabled) 1f else .35f)
             else
-                MaterialTheme.colorScheme.primary.copy(alpha = if(enabled)1f else .35f)
+                MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 1f else .35f)
 
             OutlinedButton(
                 modifier = buttonsModifier,
@@ -276,77 +311,6 @@ fun ControlPanelButton(
     }
 }
 
-
-
-//@Composable
-//fun ToggleButton(
-//    modifier: Modifier = Modifier,
-//    toggleButtonOption:ToggleButtonOption,
-//    selected:Boolean,
-//    enabled: Boolean,
-//    onClick: () -> Unit,
-//){
-//    Button(
-//        modifier = modifier,
-//        onClick = onClick,
-//        shape = RoundedCornerShape(0),
-//        colors = ButtonDefaults.buttonColors(
-//            containerColor = if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
-//        ),
-//        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp),
-//        contentPadding = PaddingValues(0.dp),
-//        enabled = enabled
-//    ) {
-//        Row(
-//            modifier = Modifier.padding(0.dp),
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            Text(
-//                text = toggleButtonOption.title,
-//                style = MaterialTheme.typography.titleMedium,
-//                color = if(selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
-//            )
-//
-//            if(toggleButtonOption.icon!=null){
-//                Icon(
-//                    painter = painterResource(id = toggleButtonOption.icon),
-//                    contentDescription = toggleButtonOption.title
-//                )
-//            }
-//        }
-//    }
-//}
-//
-//@Composable
-//fun ToggleButtons(
-//    modifier: Modifier = Modifier,
-//    options:List<ToggleButtonOption>,
-//    state:Contract.State,
-//    viewModel: EmulatorViewModel = hiltViewModel(),
-//){
-//    if(options.isEmpty())
-//        return
-//
-//    Box(
-//        modifier = modifier
-//    ){
-//        Row(
-//            modifier = Modifier.padding(12.dp),
-//            verticalAlignment = Alignment.CenterVertically
-//        ){
-//            options.forEach {
-//                ToggleButton(
-//                    toggleButtonOption = it ,
-//                    selected = state.searchStrategy.getType() == it.tag,
-//                    enabled = state.status==Contract.Status.Idle
-//                ) {
-//                    viewModel.setEvent(Contract.Event.OnSearchStrategyChange(it.tag))
-//                }
-//            }
-//        }
-//    }
-//}
-
 fun Modifier.ifThen(condition: Boolean, modifier: Modifier.() -> Modifier): Modifier {
     return if (condition) {
         this.then(modifier())
@@ -354,7 +318,6 @@ fun Modifier.ifThen(condition: Boolean, modifier: Modifier.() -> Modifier): Modi
         this
     }
 }
-
 
 @Preview(showBackground = true)
 @Composable
@@ -366,35 +329,7 @@ fun GreetingPreviewTop() {
                 minSideBlockCnt = 20,
                 start = Block(3, 5),
                 dest = Block(14, 14),
-                barrier = hashSetOf(
-                    Block(3, 2),
-                    Block(2, 2),
-                    Block(1, 4),
-                    Block(6, 2),
-                    Block(7, 3),
-                    Block(7, 4),
-                    Block(7, 5),
-                    Block(8, 6),
-                    Block(9, 7),
-                    Block(9, 8),
-                    Block(9, 9),
-                    Block(2, 10),
-                    Block(3, 10),
-                    Block(4, 10),
-                    Block(5, 10),
-                    Block(7, 10),
-                    Block(8, 10),
-                    Block(12, 11),
-                    Block(13, 11),
-                    Block(14, 11),
-                    Block(12, 12),
-                    Block(12, 13),
-                    Block(12, 14),
-                    Block(12, 15),
-                    Block(11, 16),
-                    Block(10, 17),
-                    Block(10, 18),
-                ),
+                barrier = hashSetOf(),
                 searchStrategy = SearchBFS(),
                 searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
 

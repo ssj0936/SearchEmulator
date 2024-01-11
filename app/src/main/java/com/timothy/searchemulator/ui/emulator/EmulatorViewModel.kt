@@ -90,6 +90,10 @@ class EmulatorViewModel @Inject constructor() :
 
                 onBarrierDraggingEnd()
             }
+
+            is Contract.Event.OnBarrierClearButtonClicked->{
+                onBarrierClearButtonClicked()
+            }
         }
     }
 
@@ -108,6 +112,11 @@ class EmulatorViewModel @Inject constructor() :
             setState { copy(barrier = barrier.toHashSet().apply { remove(block) }) }
         else
             setState { copy(barrier = barrier.toHashSet().apply { add(block) }) }
+    }
+
+    private fun onBarrierClearButtonClicked(){
+        setState { copy(barrier = hashSetOf()) }
+        setEffect(Contract.Effect.OnBarrierCleaned)
     }
 
     private val Block.isValidBlock: Boolean

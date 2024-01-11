@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -42,17 +43,9 @@ fun EmulatorPage(
 
     LaunchedEffect(key1 =Unit){
         viewModel.effect.collect{effect->
-            when(effect){
-                is Contract.Effect.OnSearchFinish ->{
-                    val isSuccess = effect.isSuccess
-                    scope.launch {
-                        snackbarHostState.showSnackbar(if(isSuccess) "found path" else "path not found")
-                    }
-                }
-            }
+            effectHandle(effect, scope, snackbarHostState)
         }
     }
-//    Timber.d("state:$state")
 
     Scaffold(
         snackbarHost = {
@@ -80,6 +73,25 @@ fun EmulatorPage(
                 )
                 BottomControlPanel(state = state)
             }
+        }
+    }
+}
+
+fun effectHandle(
+    effect: Contract.Effect,
+    scope:CoroutineScope,
+    snackbarHostState:SnackbarHostState
+) = when(effect){
+    is Contract.Effect.OnSearchFinish ->{
+        val isSuccess = effect.isSuccess
+        scope.launch {
+            snackbarHostState.showSnackbar(if(isSuccess) "found path" else "path not found")
+        }
+    }
+
+    is Contract.Effect.OnBarrierCleaned->{
+        scope.launch {
+            snackbarHostState.showSnackbar("Barrier cleaned")
         }
     }
 }

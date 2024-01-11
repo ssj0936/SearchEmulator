@@ -23,9 +23,12 @@ class Contract{
 
         data class OnSearchStrategyChange(val strategy: SearchAlgo):Event()
 
+        //drawing
         data class OnBarrierDrawingStart(val offset: Offset):Event()
         data class OnBarrierDrawing(val block: Block):Event()
         object OnBarrierDrawingEnd:Event()
+
+        object OnBarrierClearButtonClicked:Event()
     }
 
 
@@ -68,6 +71,7 @@ class Contract{
 
     sealed class Effect:BaseEffect{
         data class OnSearchFinish(val isSuccess:Boolean):Effect()
+        object OnBarrierCleaned:Effect()
     }
 
 }
