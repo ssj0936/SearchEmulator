@@ -362,11 +362,11 @@ fun GreetingPreviewTop() {
     SearchEmulatorTheme {
         ControlPanel(
             state = Contract.State(
-                status = Contract.Status.ConditionsMissing,
+                status = Contract.Status.Idle,
                 minSideBlockCnt = 20,
                 start = Block(3, 5),
                 dest = Block(14, 14),
-                barrier = listOf(
+                barrier = hashSetOf(
                     Block(3, 2),
                     Block(2, 2),
                     Block(1, 4),

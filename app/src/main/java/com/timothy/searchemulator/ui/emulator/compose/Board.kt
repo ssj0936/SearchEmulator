@@ -63,6 +63,7 @@ fun EmulatorPage(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(horizontal = 12.dp, vertical = 24.dp)
                 .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
 

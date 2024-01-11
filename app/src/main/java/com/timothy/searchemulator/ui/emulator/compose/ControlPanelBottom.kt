@@ -16,8 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.timothy.searchemulator.model.BOARD_SIZE_MAX
+import com.timothy.searchemulator.model.BOARD_SIZE_MIN
 import com.timothy.searchemulator.model.MOVEMENT_SPEED_MAX
 import com.timothy.searchemulator.model.MOVEMENT_SPEED_MIN
+import com.timothy.searchemulator.model.getBoardSizeTick
 import com.timothy.searchemulator.model.getMovementSpeedTick
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
@@ -33,9 +36,9 @@ fun BottomControlPanel(
         .padding(horizontal = 24.dp)) {
         ValueSlideBar(
             enabled = (viewModel.currentState.status== Contract.Status.Idle),
-            value = state.minSideBlockCnt.toFloat(),
+            value = getBoardSizeTick(viewModel.currentState.minSideBlockCnt),
             title = "size",
-            valueRange = 10f..40f,
+            valueRange = BOARD_SIZE_MIN.toFloat()..BOARD_SIZE_MAX.toFloat(),
             steps = 2,
             onValueChange = {viewModel.setEvent(Contract.Event.OnSizeSliderChange(it))}
         )

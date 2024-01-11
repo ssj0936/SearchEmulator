@@ -1,9 +1,12 @@
 package com.timothy.searchemulator.ui.emulator
 
+import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.viewModelScope
+import com.timothy.searchemulator.model.BOARD_SIZE_DEFAULT
 import com.timothy.searchemulator.ui.emulator.algo.MovementType
 import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
 import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
+import com.timothy.searchemulator.model.getBoardSize
 import com.timothy.searchemulator.model.getMovementSpeedDelay
 import com.timothy.searchemulator.ui.base.BaseViewModel
 import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
@@ -22,22 +25,21 @@ class EmulatorViewModel @Inject constructor() :
 
     override fun createInitState(): Contract.State =
         Contract.State(
-            status = Contract.Status.ConditionsMissing,
-            minSideBlockCnt = 20,
+            status = Contract.Status.Idle,
+            minSideBlockCnt = getBoardSize(BOARD_SIZE_DEFAULT.toFloat()) ,
             start = Block(3, 5),
             dest = Block(14, 14),
 //            dest = Block(6, 5),
 //            dest = Block(13, 13),
-            barrier = listOf(
-                Block(3,2), Block(2,2), Block(1,4),
-                Block(6,2), Block(7,3), Block(7,4), Block(7,5), Block(8,6), Block(9,7),Block(9,8),Block(9,9),
-                Block(2,10),Block(3,10),Block(4,10),Block(5,10),Block(7,10),Block(8,10),
-                Block(12,11),Block(13,11),Block(14,11),Block(12,12),Block(12,13),Block(12,14),Block(12,15),Block(11,16),Block(10,17),Block(10,18),
-                Block(14,12),Block(14,13),Block(14,16),Block(13,14),
+            barrier = hashSetOf(
+//                Block(3,2), Block(2,2), Block(1,4),
+//                Block(6,2), Block(7,3), Block(7,4), Block(7,5), Block(8,6), Block(9,7),Block(9,8),Block(9,9),
+//                Block(2,10),Block(3,10),Block(4,10),Block(5,10),Block(7,10),Block(8,10),
+//                Block(12,11),Block(13,11),Block(14,11),Block(12,12),Block(12,13),Block(12,14),Block(12,15),Block(11,16),Block(10,17),Block(10,18),
+//                Block(14,12),Block(14,13),Block(14,16),Block(13,14),
             ),
             searchStrategy = SearchDFS(),
             searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
-
         )
 
     override fun eventHandle(event: Contract.Event) {
@@ -54,36 +56,82 @@ class EmulatorViewModel @Inject constructor() :
                 onStopButtonClick()
             }
 
-            is Contract.Event.OnBlockPressed -> {}
             is Contract.Event.OnScreenMeasured -> {
                 onScreenMeasured(event.heightInPx, event.widthInPx)
             }
 
-            is Contract.Event.OnSizeSliderChange ->{
-                onSizeSliderChange(event.value.toInt())
+            is Contract.Event.OnSizeSliderChange -> {
+                onSizeSliderChange(event.value)
             }
-            is Contract.Event.OnSpeedSliderChange ->{
+
+            is Contract.Event.OnSpeedSliderChange -> {
                 onSpeedSliderChange(event.value)
             }
 
-            is Contract.Event.OnSearchStrategyChange->{
+            is Contract.Event.OnSearchStrategyChange -> {
                 onSearchStrategyChange(event.strategy)
+            }
+
+            //barrier events
+            is Contract.Event.OnBlockPressed -> {}
+            is Contract.Event.OnBarrierDrawingStart -> {
+                if (currentState.status != Contract.Status.Idle) return
+                onBarrierDraggingStart()
+            }
+
+            is Contract.Event.OnBarrierDrawing -> {
+                if (currentState.status != Contract.Status.BarrierDrawing) return
+
+                onBarrierDragging(event.block)
+            }
+
+            is Contract.Event.OnBarrierDrawingEnd -> {
+                if (currentState.status != Contract.Status.BarrierDrawing) return
+
+                onBarrierDraggingEnd()
             }
         }
     }
+
+    private fun onBarrierDraggingEnd() {
+        setState { copy(status = Contract.Status.Idle) }
+    }
+
+    private fun onBarrierDraggingStart() {
+        setState { copy(status = Contract.Status.BarrierDrawing) }
+    }
+
+    private fun onBarrierDragging(block: Block) {
+        if (!block.isValidBlock) return
+
+        if (currentState.barrier.contains(block))
+            setState { copy(barrier = barrier.toHashSet().apply { remove(block) }) }
+        else
+            setState { copy(barrier = barrier.toHashSet().apply { add(block) }) }
+    }
+
+    private val Block.isValidBlock: Boolean
+        get() = isValidBlock(currentState.matrixW, currentState.matrixH)
+
+    private fun Block.isValidBlock(w:Int, h:Int): Boolean{
+        return this.first in 0 until w
+                && this.second in 0 until h
+    }
+
+
 
     private fun onScreenMeasured(height: Int, width: Int) {
         val blockSize = minOf(width, height) / currentState.minSideBlockCnt
 
         val matrixW = (width / blockSize)
         val matrixH = (height / blockSize)
-        val status = if (currentState.start == null
-            || currentState.start?.first !in 0 until matrixW
-            || currentState.start?.second !in 0 until matrixH
-            || currentState.dest == null
-            || currentState.dest?.first !in 0 until matrixW
-            || currentState.dest?.second !in 0 until matrixH
-        ) Contract.Status.ConditionsMissing else Contract.Status.Idle
+//        val status = if (currentState.start == null
+//            || currentState.start?.first !in 0 until matrixW
+//            || currentState.start?.second !in 0 until matrixH
+//            || currentState.dest == null
+//            || currentState.dest?.first !in 0 until matrixW
+//            || currentState.dest?.second !in 0 until matrixH
+//        ) Contract.Status.ConditionsMissing else Contract.Status.Idle
 
         setState {
             copy(
@@ -98,11 +146,11 @@ class EmulatorViewModel @Inject constructor() :
 
     }
 
-    private fun onSearchPause(){
+    private fun onSearchPause() {
         currentState.searchStrategy.onPause()
     }
 
-    private fun onSearchResume(){
+    private fun onSearchResume() {
         currentState.searchStrategy.onResume()
 
         job?.cancel()
@@ -124,7 +172,7 @@ class EmulatorViewModel @Inject constructor() :
         }
     }
 
-    private fun onSearchLaunch(){
+    private fun onSearchLaunch() {
         val start = currentState.start!!
         val dest = currentState.dest!!
         val sizeW = currentState.matrixW
@@ -137,7 +185,7 @@ class EmulatorViewModel @Inject constructor() :
                 .setSizeH(sizeH)
                 .setStart(start)
                 .setDest(dest)
-                .setBarriers(barrier)
+                .setBarriers(barrier.toList())
                 .init()
                 .search(
                     delayBetweenSteps = currentState.searchProcessDelay,
@@ -156,7 +204,7 @@ class EmulatorViewModel @Inject constructor() :
         }
     }
 
-    private fun onSearchStop(){
+    private fun onSearchStop() {
         currentState.searchStrategy.onStop()
         job?.cancel()
     }
@@ -167,17 +215,21 @@ class EmulatorViewModel @Inject constructor() :
         } else {
             onSearchLaunch()
         }
-        setState { copy(
-            status = Contract.Status.Started,
-            path = emptyList()
-        )}
+        setState {
+            copy(
+                status = Contract.Status.Started,
+                path = emptyList()
+            )
+        }
     }
 
     private fun onSearchFinish(isFound: Boolean, path: List<Block>?) {
-        setState { copy(
-            status = Contract.Status.SearchFinish,
-            path = path?: emptyList()
-        )}
+        setState {
+            copy(
+                status = Contract.Status.SearchFinish,
+                path = path ?: emptyList()
+            )
+        }
 
         setEffect(Contract.Effect.OnSearchFinish(isFound))
     }
@@ -192,7 +244,10 @@ class EmulatorViewModel @Inject constructor() :
             }
 
             MovementType.MOVEMENT_REVERSE -> {
-                setState { copy(passed = currentState.passed.toMutableList().apply { remove(block) }) }
+                setState {
+                    copy(
+                        passed = currentState.passed.toMutableList().apply { remove(block) })
+                }
             }
         }
     }
@@ -215,36 +270,46 @@ class EmulatorViewModel @Inject constructor() :
         }
     }
 
-    private fun onSizeSliderChange(size:Int){
-        val blockSize = minOf(currentState.width, currentState.height) / size
+    private fun onSizeSliderChange(size: Float) {
+        val minSideBlockCnt = getBoardSize(size)
+        val blockSize = minOf(currentState.width, currentState.height) / minSideBlockCnt
         val matrixW = (currentState.width / blockSize)
         val matrixH = (currentState.height / blockSize)
 
-        setState{copy(
-            minSideBlockCnt = size,
-            blockSize = blockSize,
-            matrixW = matrixW,
-            matrixH = matrixH
-        )}
+//        val barrier = currentState.barrier.toHashSet().apply {
+//            currentState.barrier.forEach { block->
+//                if(!block.isValidBlock(matrixW, matrixH))
+//                    this.remove(block)
+//            }
+//        }
+        setState {
+            copy(
+                minSideBlockCnt = minSideBlockCnt,
+                blockSize = blockSize,
+                matrixW = matrixW,
+                matrixH = matrixH,
+//                barrier = barrier
+            )
+        }
     }
 
-    private fun onSpeedSliderChange(speed:Float){
-        setState{copy(searchProcessDelay = getMovementSpeedDelay(speed))}
-        if(currentState.status == Contract.Status.Started) {
+    private fun onSpeedSliderChange(speed: Float) {
+        setState { copy(searchProcessDelay = getMovementSpeedDelay(speed)) }
+        if (currentState.status == Contract.Status.Started) {
             onSearchPause()
             onSearchResume()
         }
     }
 
-    private fun onSearchStrategyChange(strategy:SearchAlgo){
-        if(currentState.searchStrategy.getType() == strategy) return
+    private fun onSearchStrategyChange(strategy: SearchAlgo) {
+        if (currentState.searchStrategy.getType() == strategy) return
 
         onSearchStop()
         setState {
             copy(
-                searchStrategy = when(strategy){
-                    SearchAlgo.SEARCH_BFS-> SearchBFS()
-                    SearchAlgo.SEARCH_DFS-> SearchDFS()
+                searchStrategy = when (strategy) {
+                    SearchAlgo.SEARCH_BFS -> SearchBFS()
+                    SearchAlgo.SEARCH_DFS -> SearchDFS()
                 }
             )
         }
