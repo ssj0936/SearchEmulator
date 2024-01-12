@@ -9,13 +9,14 @@ import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
 
 typealias Block = Pair<Int,Int>
 typealias BlockIndex = Int
+val Block.x:Int get() = this.first
+val Block.y:Int get() = this.second
 
 class Contract{
     sealed class Event:BaseEvent{
         object OnSearchBtnClick:Event()
         object OnPauseBtnClick:Event()
         object OnResetBtnClick:Event()
-        data class OnBlockPressed(val block:Block):Event()
         data class OnScreenMeasured(val widthInPx:Int, val heightInPx:Int):Event()
 
         data class OnSizeSliderChange(val value:Float):Event()
@@ -27,6 +28,8 @@ class Contract{
         data class OnDraggingStart(val offset: Offset):Event()
         data class OnDragging(val block: Block):Event()
         object OnDraggingEnd:Event()
+        data class OnPressed(val offset: Offset):Event()
+        data class OnTap(val offset: Offset):Event()
 
         object OnBarrierClearButtonClicked:Event()
     }

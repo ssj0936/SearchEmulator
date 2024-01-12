@@ -1,5 +1,6 @@
 package com.timothy.searchemulator.ui.emulator
 
+import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.viewModelScope
 import com.timothy.searchemulator.model.BOARD_SIZE_DEFAULT
 import com.timothy.searchemulator.ui.emulator.algo.MovementType
@@ -73,10 +74,9 @@ class EmulatorViewModel @Inject constructor() :
             }
 
             //barrier events
-            is Contract.Event.OnBlockPressed -> {}
             is Contract.Event.OnDraggingStart -> {
                 if (currentState.status != Contract.Status.Idle) return
-                onDraggingStart(event)
+                onDraggingStart(event.offset)
             }
 
             is Contract.Event.OnDraggingEnd -> {
@@ -89,20 +89,52 @@ class EmulatorViewModel @Inject constructor() :
                 onBarrierDragging(event.block)
             }
 
+            is Contract.Event.OnPressed -> {
+                if (currentState.status != Contract.Status.Idle) return
+                onPressed(event.offset)
+            }
+
+            is Contract.Event.OnTap -> {
+                onTap(event.offset)
+            }
+
             is Contract.Event.OnBarrierClearButtonClicked -> {
                 onBarrierClearButtonClicked()
             }
         }
     }
 
+    private fun onPressed(offset: Offset) {
+        onDraggingStart(offset)
+    }
+
+    private fun onTap(offset: Offset) {
+        val block = offset.toBlock(currentState.blockSize)
+        if (currentState.barrier.contains(block))
+            setState {
+                copy(
+                    status = Contract.Status.Idle,
+                    barrier = barrier.toHashSet().apply { remove(block) }
+                )
+            }
+        else
+            setState {
+                copy(
+                    status = Contract.Status.Idle,
+                    barrier = barrier.toHashSet().apply { add(block) }
+                )
+            }
+
+    }
+
     private fun onDraggingEnd() {
         setState { copy(status = Contract.Status.Idle) }
     }
 
-    private fun onDraggingStart(event: Contract.Event.OnDraggingStart) {
+    private fun onDraggingStart(offset: Offset) {
         setState {
             copy(
-                status = when (event.offset.toBlock(currentState.blockSize)) {
+                status = when (offset.toBlock(currentState.blockSize)) {
                     currentState.start -> Contract.Status.StartDragging
                     currentState.dest -> Contract.Status.DestDragging
                     else -> Contract.Status.BarrierDrawing
@@ -126,6 +158,7 @@ class EmulatorViewModel @Inject constructor() :
             }
 
             is Contract.Status.BarrierDrawing -> {
+                if (block == currentState.dest || block == currentState.start) return
                 if (currentState.barrier.contains(block))
                     setState { copy(barrier = barrier.toHashSet().apply { remove(block) }) }
                 else

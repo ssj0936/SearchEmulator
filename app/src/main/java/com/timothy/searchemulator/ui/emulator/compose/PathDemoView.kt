@@ -2,12 +2,15 @@ package com.timothy.searchemulator.ui.emulator.compose
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -21,6 +24,7 @@ import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.timothy.searchemulator.ui.base.toBlock
 import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
@@ -36,37 +40,35 @@ fun BoardView(
     var availableW by remember { mutableIntStateOf(0) }
     var availableH by remember { mutableIntStateOf(0) }
 
-
     val blockSize = state.blockSize
     val matrixW = state.matrixW
     val matrixH = state.matrixH
 
-    var drawingBlockX by remember { mutableIntStateOf(0) }
-    var drawingBlockY by remember { mutableIntStateOf(0) }
+    val drawingPosition = remember { mutableStateOf(Block(0, 0)) }
 
-    Timber.d("(BoardView) state:$state")
+//    Timber.d("(BoardView) state:$state")
     Box(modifier = modifier
         .fillMaxSize()
-        .pointerInput(Unit) {
-            detectDragGestures(
-                onDragStart = {
-                    viewModel.setEvent(Contract.Event.OnDraggingStart(it))
+        .pointerInput(viewModel.currentState.blockSize) {
+            dragging(
+                blockSize = viewModel.currentState.blockSize,
+                drawingPosition = drawingPosition,
+                onDragStart = { offset ->
+                    viewModel.setEvent(Contract.Event.OnDraggingStart(offset))
                 },
-                onDragEnd = {
-                    viewModel.setEvent(Contract.Event.OnDraggingEnd)
-                    drawingBlockX = 0
-                    drawingBlockY = 0
+                onDragEnd = { viewModel.setEvent(Contract.Event.OnDraggingEnd) },
+                onDrag = { block -> viewModel.setEvent(Contract.Event.OnDragging(block)) }
+            )
+        }
+        .pointerInput(viewModel.currentState.blockSize) {
+            detectTapGestures(
+                onPress = {
+                    viewModel.setEvent(Contract.Event.OnPressed(it))
+                },
+                onTap = {
+                    viewModel.setEvent(Contract.Event.OnTap(it))
                 }
-            ) { change, _ ->
-                val hoveringX = (change.position.x/viewModel.currentState.blockSize).toInt()
-                val hoveringY = (change.position.y/viewModel.currentState.blockSize).toInt()
-                if(hoveringX>=0 && hoveringY >=0 && ((hoveringX != drawingBlockX) || (hoveringY != drawingBlockY))){
-                    drawingBlockX = hoveringX
-                    drawingBlockY = hoveringY
-                    viewModel.setEvent(Contract.Event.OnDragging(Block(drawingBlockX, drawingBlockY)))
-                }
-
-            }
+            )
         }
         .onGloballyPositioned { coordinates ->
             if (coordinates.size.width * coordinates.size.height != availableW * availableH) {
@@ -80,19 +82,50 @@ fun BoardView(
                 )
             }
         }) {
-        with(MaterialTheme.color){
+        with(MaterialTheme.color) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawBackground(blockSize, matrixW, matrixH, this@with.colorBlockBackground)
                 drawPassedBlocks(state.passed, blockSize, this@with.colorBlockPassed)
                 drawPath(state.path, blockSize, this@with.colorBlockPath)
-                drawBarrier(state.barrier.toList(), matrixW, matrixH, blockSize, this@with.colorBlockBarrier)
+                drawBarrier(
+                    state.barrier.toList(),
+                    matrixW,
+                    matrixH,
+                    blockSize,
+                    this@with.colorBlockBarrier
+                )
                 drawEndPoint(state.start, blockSize, this@with.colorBlockStart)
                 drawEndPoint(state.dest, blockSize, this@with.colorBlockDest)
             }
         }
-
-
     }
+}
+
+suspend fun PointerInputScope.dragging(
+    onDragStart: (Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    onDrag: (Block) -> Unit,
+    blockSize: Int,
+    drawingPosition: MutableState<Block>
+) {
+    detectDragGestures(
+        onDragStart = {
+            onDragStart(it)
+        },
+
+        onDragEnd = {
+            onDragEnd()
+            drawingPosition.value = Block(0, 0)
+        },
+
+        onDrag = { change, _ ->
+            val currentBlock = change.position.toBlock(blockSize)
+            if (currentBlock != drawingPosition.value) {
+                drawingPosition.value = currentBlock
+                onDrag(drawingPosition.value)
+            }
+        }
+    )
 }
 
 fun Modifier.pointerInputCombine(
@@ -134,10 +167,16 @@ fun DrawScope.drawPassedBlocks(passed: List<Block>, brickSize: Int, color: Color
     }
 }
 
-fun DrawScope.drawBarrier(barrier: List<Block>, matrixW: Int, matrixH: Int, brickSize: Int, color: Color) {
+fun DrawScope.drawBarrier(
+    barrier: List<Block>,
+    matrixW: Int,
+    matrixH: Int,
+    brickSize: Int,
+    color: Color
+) {
     //draw passed
     barrier.forEach {
-        if(it.first in 0 until matrixW && it.second in 0 until matrixH)
+        if (it.first in 0 until matrixW && it.second in 0 until matrixH)
             drawUnitBlockFilled(brickSize, it.first, it.second, color)
     }
 }
