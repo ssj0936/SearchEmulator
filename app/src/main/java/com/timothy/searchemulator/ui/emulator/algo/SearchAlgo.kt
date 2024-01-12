@@ -12,6 +12,10 @@ enum class SearchAlgo{
     SEARCH_BFS, SEARCH_DFS
 }
 
+interface SingletonSearchStrategy{
+    val instance: SearchStrategy
+}
+
 abstract class SearchStrategy {
     val dirs = arrayOf(
         intArrayOf(0, -1)/*up*/,
@@ -22,16 +26,14 @@ abstract class SearchStrategy {
 
     protected var isPaused: Boolean = false
     protected var isRunning = false
-    protected var isFinish = false
+    private var isFinish = false
     protected var isInit = false
-
 
     protected var sizeW: Int = 0
     protected var sizeH: Int = 0
     protected var start: Block = Block(0, 0)
     protected var dest: Block = Block(0, 0)
     protected var barriers: List<Block> = emptyList()
-
 
     fun setSizeW(sizeW: Int): SearchStrategy = apply {
         this.sizeW = sizeW

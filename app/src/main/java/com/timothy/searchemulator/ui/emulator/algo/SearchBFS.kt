@@ -10,6 +10,12 @@ class SearchBFS : SearchStrategy() {
     private lateinit var queue: LinkedList<MutableList<Block>>
     private lateinit var visited: Array<BooleanArray>
 
+    companion object:SingletonSearchStrategy{
+        private val _instance by lazy { SearchBFS() }
+        override val instance:SearchStrategy
+            get() = _instance
+    }
+
     override fun reset() {
         super.reset()
 

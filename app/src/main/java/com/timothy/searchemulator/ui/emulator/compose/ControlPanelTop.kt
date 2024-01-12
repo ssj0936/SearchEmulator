@@ -329,7 +329,7 @@ fun GreetingPreviewTop() {
                 start = Block(3, 5),
                 dest = Block(14, 14),
                 barrier = hashSetOf(),
-                searchStrategy = SearchBFS(),
+                searchStrategy = SearchBFS.instance,
                 searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
 
             )

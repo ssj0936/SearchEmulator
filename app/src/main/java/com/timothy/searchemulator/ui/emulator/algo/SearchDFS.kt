@@ -10,6 +10,12 @@ class SearchDFS : SearchStrategy() {
     private lateinit var stack: LinkedList<Block>
     private lateinit var prev: Array<Array<Block?>>
 
+    companion object:SingletonSearchStrategy{
+        private val _instance by lazy { SearchDFS() }
+        override val instance:SearchStrategy
+            get() = _instance
+    }
+
     override fun reset() {
         super.reset()
 

@@ -3,7 +3,7 @@ package com.timothy.searchemulator.model
 import kotlin.math.ln
 
 //speed
-const val MOVEMENT_SPEED_BASE = 100L
+const val MOVEMENT_SPEED_BASE = 50L
 const val MOVEMENT_SPEED_MIN = 1
 const val MOVEMENT_SPEED_MAX = 5
 const val MOVEMENT_SPEED_STEP = 3
