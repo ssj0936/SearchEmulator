@@ -81,7 +81,6 @@ fun EmulatorPage(
                 )
 //                Spacer(modifier = Modifier.height(8.dp))
                 BottomControlPanel(
-                    state = state,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp)
