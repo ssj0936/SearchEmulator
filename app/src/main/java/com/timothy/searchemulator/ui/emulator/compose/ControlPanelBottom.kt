@@ -31,9 +31,7 @@ fun BottomControlPanel(
     state: Contract.State,
     viewModel: EmulatorViewModel = hiltViewModel(),
 ){
-    Column(modifier = modifier
-        .fillMaxWidth()
-        .padding(horizontal = 24.dp)) {
+    Column(modifier = modifier) {
         ValueSlideBar(
             enabled = (viewModel.currentState.status== Contract.Status.Idle),
             value = getBoardSizeTick(viewModel.currentState.minSideBlockCnt),

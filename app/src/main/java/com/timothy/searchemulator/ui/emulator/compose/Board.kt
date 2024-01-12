@@ -3,9 +3,11 @@ package com.timothy.searchemulator.ui.emulator.compose
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -56,7 +58,7 @@ fun EmulatorPage(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 12.dp, vertical = 24.dp)
+                .padding(24.dp)
                 .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
 
@@ -64,14 +66,26 @@ fun EmulatorPage(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ControlPanel(state = state)
+                ControlPanel(
+                    state = state,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 BoardView(
                     state = state,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
+                        .padding(horizontal = 12.dp)
                 )
-                BottomControlPanel(state = state)
+//                Spacer(modifier = Modifier.height(8.dp))
+                BottomControlPanel(
+                    state = state,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp)
+                )
             }
         }
     }

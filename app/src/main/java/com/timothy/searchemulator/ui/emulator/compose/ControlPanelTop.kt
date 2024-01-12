@@ -99,8 +99,7 @@ fun ControlPanel(
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .fillMaxWidth()
-            .padding(24.dp)
+
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
