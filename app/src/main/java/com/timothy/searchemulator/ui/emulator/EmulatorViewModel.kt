@@ -18,15 +18,23 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+import com.timothy.searchemulator.ui.emulator.MovementType.*
+import com.timothy.searchemulator.ui.emulator.MovementType.MOVE_DEST
+import com.timothy.searchemulator.ui.emulator.MovementType.MOVE_START
+
+import com.timothy.searchemulator.ui.emulator.Contract.*
+
 @HiltViewModel
-class EmulatorViewModel @Inject constructor() :
-    BaseViewModel<Contract.State, Contract.Event, Contract.Effect>() {
+class EmulatorViewModel @Inject constructor(
+    private val movementRecordManager: MovementRecordManager
+) :
+    BaseViewModel<State, Event, Effect>() {
 
     private var job: Job? = null
 
-    override fun createInitState(): Contract.State =
-        Contract.State(
-            status = Contract.Status.Idle,
+    override fun createInitState(): State =
+        State(
+            status = Status.Idle,
             minSideBlockCnt = getBoardSize(BOARD_SIZE_DEFAULT.toFloat()),
             start = Block(0, 0),
             dest = Block(10, 10),
@@ -35,63 +43,71 @@ class EmulatorViewModel @Inject constructor() :
             searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
         )
 
-    override fun eventHandle(event: Contract.Event) {
+    override fun eventHandle(event: Event) {
         when (event) {
-            is Contract.Event.OnSearchBtnClick -> {
+            is Event.OnSearchBtnClick -> {
                 onStartButtonClick()
             }
 
-            is Contract.Event.OnPauseBtnClick -> {
+            is Event.OnPauseBtnClick -> {
                 onPauseButtonClick()
             }
 
-            is Contract.Event.OnResetBtnClick -> {
+            is Event.OnResetBtnClick -> {
                 onStopButtonClick()
             }
 
-            is Contract.Event.OnScreenMeasured -> {
+            is Event.OnScreenMeasured -> {
                 onScreenMeasured(event.heightInPx, event.widthInPx)
             }
 
-            is Contract.Event.OnSizeSliderChange -> {
+            is Event.OnSizeSliderChange -> {
                 onSizeSliderChange(event.value)
             }
 
-            is Contract.Event.OnSpeedSliderChange -> {
+            is Event.OnSpeedSliderChange -> {
                 onSpeedSliderChange(event.value)
             }
 
-            is Contract.Event.OnSearchStrategyChange -> {
+            is Event.OnSearchStrategyChange -> {
                 onSearchStrategyChange(event.strategy)
             }
 
             //barrier events
-            is Contract.Event.OnDraggingStart -> {
-                if (currentState.status != Contract.Status.Idle) return
+            is Event.OnDraggingStart -> {
+                if (currentState.status != Status.Idle) return
                 onDraggingStart(event.offset)
             }
 
-            is Contract.Event.OnDraggingEnd -> {
-                if (currentState.status !is Contract.DrawingType) return
+            is Event.OnDraggingEnd -> {
+                if (currentState.status !is DrawingType) return
                 onDraggingEnd()
             }
 
-            is Contract.Event.OnDragging -> {
-                if (currentState.status !is Contract.DrawingType) return
+            is Event.OnDragging -> {
+                if (currentState.status !is DrawingType) return
                 onBarrierDragging(event.block)
             }
 
-            is Contract.Event.OnPressed -> {
-                if (currentState.status != Contract.Status.Idle) return
+            is Event.OnPressed -> {
+                if (currentState.status != Status.Idle) return
                 onPressed(event.offset)
             }
 
-            is Contract.Event.OnTap -> {
+            is Event.OnTap -> {
                 onTap(event.offset)
             }
 
-            is Contract.Event.OnBarrierClearButtonClicked -> {
+            is Event.OnBarrierClearButtonClicked -> {
                 onBarrierClearButtonClicked()
+            }
+
+            is Event.OnBarrierUndoButtonClicked -> {
+                onBarrierUndoButtonClicked()
+            }
+
+            is Event.OnBarrierRedoButtonClicked -> {
+                onBarrierRedoButtonClicked()
             }
         }
     }
@@ -102,17 +118,21 @@ class EmulatorViewModel @Inject constructor() :
 
     private fun onTap(offset: Offset) {
         val block = offset.toBlock(currentState.blockSize)
+
+        movementRecordManager.record(block)
+        movementRecordManager.stopRecording()
+
         if (currentState.barrier.contains(block))
             setState {
                 copy(
-                    status = Contract.Status.Idle,
+                    status = Status.Idle,
                     barrier = barrier.toHashSet().apply { remove(block) }
                 )
             }
         else
             setState {
                 copy(
-                    status = Contract.Status.Idle,
+                    status = Status.Idle,
                     barrier = barrier.toHashSet().apply { add(block) }
                 )
             }
@@ -120,18 +140,39 @@ class EmulatorViewModel @Inject constructor() :
     }
 
     private fun onDraggingEnd() {
-        setState { copy(status = Contract.Status.Idle) }
+        if(currentState.status==Status.StartDragging)
+            movementRecordManager.record(currentState.start!!)
+        else if(currentState.status==Status.DestDragging)
+            movementRecordManager.record(currentState.dest!!)
+        movementRecordManager.stopRecording()
+
+        setState { copy(status = Status.Idle) }
     }
 
     private fun onDraggingStart(offset: Offset) {
+        val newStatus = when (offset.toBlock(currentState.blockSize)) {
+            currentState.start -> Status.StartDragging
+            currentState.dest -> Status.DestDragging
+            else -> Status.BarrierDrawing
+        }
+        if (currentState.status == newStatus) return
+
+        //MovementRecordManager init recording
+        movementRecordManager.startRecording(
+            type = when (newStatus) {
+                Status.StartDragging -> MOVE_START
+                Status.DestDragging -> MOVE_DEST
+                else -> DRAWING_BARRIER
+            }
+        )
+
+        if(newStatus==Status.StartDragging)
+            movementRecordManager.record(currentState.start!!)
+        else if(newStatus==Status.DestDragging)
+            movementRecordManager.record(currentState.dest!!)
+
         setState {
-            copy(
-                status = when (offset.toBlock(currentState.blockSize)) {
-                    currentState.start -> Contract.Status.StartDragging
-                    currentState.dest -> Contract.Status.DestDragging
-                    else -> Contract.Status.BarrierDrawing
-                }
-            )
+            copy(status = newStatus)
         }
     }
 
@@ -139,22 +180,24 @@ class EmulatorViewModel @Inject constructor() :
         if (!block.isValidBlock) return
 
         when (currentState.status) {
-            is Contract.Status.StartDragging -> {
+            is Status.StartDragging -> {
                 if (currentState.barrier.contains(block) || block == currentState.dest) return
                 setState { copy(start = block) }
             }
 
-            is Contract.Status.DestDragging -> {
+            is Status.DestDragging -> {
                 if (currentState.barrier.contains(block) || block == currentState.start) return
                 setState { copy(dest = block) }
             }
 
-            is Contract.Status.BarrierDrawing -> {
+            is Status.BarrierDrawing -> {
                 if (block == currentState.dest || block == currentState.start) return
                 if (currentState.barrier.contains(block))
                     setState { copy(barrier = barrier.toHashSet().apply { remove(block) }) }
                 else
                     setState { copy(barrier = barrier.toHashSet().apply { add(block) }) }
+
+                movementRecordManager.record(block)
             }
 
             else -> {}
@@ -162,8 +205,62 @@ class EmulatorViewModel @Inject constructor() :
     }
 
     private fun onBarrierClearButtonClicked() {
+        if(currentState.barrier.isEmpty()) return
+
+        movementRecordManager.startRecording(DRAWING_BARRIER)
+            .record(currentState.barrier.toList())
+            .stopRecording()
+
         setState { copy(barrier = hashSetOf()) }
-        setEffect(Contract.Effect.OnBarrierCleaned)
+//        setEffect(Effect.OnBarrierCleaned)
+    }
+
+    private fun onBarrierUndoButtonClicked() {
+        if(!movementRecordManager.hasUndoMovement()) return
+
+        when(val movement = movementRecordManager.undoLastMovement()){
+            is Movement.MoveStart->{
+                setState { copy(start = movement.from) }
+            }
+            is Movement.MoveDest->{
+                setState { copy(dest = movement.from) }
+            }
+            is Movement.DrawBarrier->{
+                val currentBarrier = currentState.barrier.toHashSet()
+                movement.drawPath.reversed().forEach {block->
+                    if(currentBarrier.contains(block))
+                        currentBarrier.remove(block)
+                    else
+                        currentBarrier.add(block)
+                }
+                setState { copy(barrier = currentBarrier) }
+            }
+            else -> {/*throw IllegalStateException("no movement to undo")*/}
+        }
+    }
+
+    private fun onBarrierRedoButtonClicked() {
+        if(!movementRecordManager.hasRedoMovement()) return
+
+        when(val movement = movementRecordManager.redoLastMovement()){
+            is Movement.MoveStart->{
+                setState { copy(start = movement.to) }
+            }
+            is Movement.MoveDest->{
+                setState { copy(dest = movement.to) }
+            }
+            is Movement.DrawBarrier->{
+                val currentBarrier = currentState.barrier.toHashSet()
+                movement.drawPath.forEach {block->
+                    if(currentBarrier.contains(block))
+                        currentBarrier.remove(block)
+                    else
+                        currentBarrier.add(block)
+                }
+                setState { copy(barrier = currentBarrier) }
+            }
+            else -> {/*throw IllegalStateException("no movement to redo")*/}
+        }
     }
 
     private val Block.isValidBlock: Boolean
@@ -256,14 +353,14 @@ class EmulatorViewModel @Inject constructor() :
     }
 
     private fun onStartButtonClick() {
-        if (currentState.status == Contract.Status.Paused) {
+        if (currentState.status == Status.Paused) {
             onSearchResume()
         } else {
             onSearchLaunch()
         }
         setState {
             copy(
-                status = Contract.Status.Started,
+                status = Status.Started,
                 path = emptyList()
             )
         }
@@ -272,12 +369,12 @@ class EmulatorViewModel @Inject constructor() :
     private fun onSearchFinish(isFound: Boolean, path: List<Block>?) {
         setState {
             copy(
-                status = Contract.Status.SearchFinish,
+                status = Status.SearchFinish,
                 path = path ?: emptyList()
             )
         }
 
-        setEffect(Contract.Effect.OnSearchFinish(isFound))
+        setEffect(Effect.OnSearchFinish(isFound))
     }
 
     private fun onSearchProcessStep(
@@ -301,7 +398,7 @@ class EmulatorViewModel @Inject constructor() :
 
     private fun onPauseButtonClick() {
         onSearchPause()
-        setState { copy(status = Contract.Status.Paused) }
+        setState { copy(status = Status.Paused) }
     }
 
     private fun onStopButtonClick() {
@@ -309,7 +406,7 @@ class EmulatorViewModel @Inject constructor() :
         //reset
         setState {
             copy(
-                status = Contract.Status.Idle,
+                status = Status.Idle,
                 passed = emptyList(),
                 path = emptyList()
             )
@@ -334,7 +431,7 @@ class EmulatorViewModel @Inject constructor() :
 
     private fun onSpeedSliderChange(speed: Float) {
         setState { copy(searchProcessDelay = getMovementSpeedDelay(speed)) }
-        if (currentState.status == Contract.Status.Started) {
+        if (currentState.status == Status.Started) {
             onSearchPause()
             onSearchResume()
         }

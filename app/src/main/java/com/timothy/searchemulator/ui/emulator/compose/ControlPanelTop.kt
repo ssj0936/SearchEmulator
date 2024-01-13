@@ -8,12 +8,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -34,12 +34,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.timothy.searchemulator.R
 import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
 import com.timothy.searchemulator.model.getMovementSpeedDelay
 import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.Contract
+import com.timothy.searchemulator.ui.emulator.Contract.Event
+import com.timothy.searchemulator.ui.emulator.Contract.Status
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
 import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
@@ -94,7 +95,6 @@ val searchStrategyButtons = listOf<ToggleButtonOption>(
 fun ControlPanel(
     modifier: Modifier = Modifier,
     state: Contract.State,
-    viewModel: EmulatorViewModel = hiltViewModel()
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -103,37 +103,70 @@ fun ControlPanel(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             PlayStateControlPanel(status = state.status)
-            Row {
-                SegmentedButtons(options = searchStrategyButtons, state = state)
-                Spacer(modifier = Modifier.width(24.dp))
-                ClearButton(
-                    onClick = { viewModel.setEvent(Contract.Event.OnBarrierClearButtonClicked) },
-                    enabled = viewModel.currentState.status == Contract.Status.Idle
-                )
-            }
-
+            SegmentedButtons(options = searchStrategyButtons, state = state)
+            DrawingToolBar()
         }
     }
 }
 
 @Composable
-fun ClearButton(
+fun DrawingToolBar(
+    modifier: Modifier = Modifier,
+    viewModel: EmulatorViewModel = hiltViewModel()
+){
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ){
+        BasicOutlinedButton(
+            onClick = {viewModel.setEvent(Event.OnBarrierUndoButtonClicked)},
+            iconId = R.drawable.baseline_undo_24,
+            enabled = viewModel.currentState.status == Status.Idle
+        )
+
+        BasicOutlinedButton(
+            onClick = {viewModel.setEvent(Event.OnBarrierClearButtonClicked)},
+            iconId = R.drawable.baseline_cleaning_services_24,
+            enabled = viewModel.currentState.status == Status.Idle
+        )
+
+        BasicOutlinedButton(
+            onClick = {viewModel.setEvent(Event.OnBarrierRedoButtonClicked)},
+            iconId = R.drawable.baseline_redo_24,
+            enabled = viewModel.currentState.status == Status.Idle
+        )
+    }
+}
+
+@Composable
+fun BasicOutlinedButton(
     onClick: () -> Unit,
+    iconId: Int,
     borderStrokeWidth: Dp = 1.dp,
     enabled: Boolean
 ) {
+//    IconButton(
+//        modifier = Modifier.border(ButtonDefaults.outlinedButtonBorder.copy(width = borderStrokeWidth), shape = ButtonDefaults.outlinedShape),
+//        onClick = onClick,
+//        colors = ButtonDefaults.outlinedButtonColors
+//    ){
+//            Icon(painter = painterResource(id = iconId), contentDescription = null)
+//
+//    }
+
     OutlinedButton(
         onClick = onClick,
-        shape = androidx.compose.foundation.shape.CircleShape,
+        shape = CircleShape,
         enabled = enabled,
         border = ButtonDefaults.outlinedButtonBorder.copy(width = borderStrokeWidth),
         contentPadding = PaddingValues(0.dp)
     ) {
         Icon(
-            painter = painterResource(id = R.drawable.baseline_cleaning_services_24),
+            modifier = Modifier.size(16.dp),
+            painter = painterResource(id = iconId),
             contentDescription = null
         )
     }
@@ -151,7 +184,7 @@ fun SegmentedButtons(
     Row(modifier) {
         options.forEachIndexed { index, toggleButtonOption ->
             val selected = state.searchStrategy.getType() == toggleButtonOption.tag
-            val enabled = state.status == Contract.Status.Idle
+            val enabled = state.status == Status.Idle
 
             val buttonsModifier = Modifier
                 .wrapContentSize()
@@ -202,7 +235,7 @@ fun SegmentedButtons(
                 modifier = buttonsModifier,
                 onClick = {
                     viewModel.setEvent(
-                        Contract.Event.OnSearchStrategyChange(
+                        Event.OnSearchStrategyChange(
                             toggleButtonOption.tag
                         )
                     )
@@ -255,25 +288,25 @@ fun PlayStateControlPanel(
             //start
             ControlPanelButton(
                 data = controlPanelButtonWrappers[0],
-                enabled = (status == Contract.Status.Idle) || (status == Contract.Status.Paused),
-                pressed = status == Contract.Status.Started,
-                onClick = { viewModel.setEvent(Contract.Event.OnSearchBtnClick) }
+                enabled = (status == Status.Idle) || (status == Status.Paused),
+                pressed = status == Status.Started,
+                onClick = { viewModel.setEvent(Event.OnSearchBtnClick) }
             )
 
             //pause
             ControlPanelButton(
                 data = controlPanelButtonWrappers[1],
-                enabled = status == Contract.Status.Started,
-                pressed = status == Contract.Status.Idle,
-                onClick = { viewModel.setEvent(Contract.Event.OnPauseBtnClick) }
+                enabled = status == Status.Started,
+                pressed = status == Status.Idle,
+                onClick = { viewModel.setEvent(Event.OnPauseBtnClick) }
             )
 
             //stop
             ControlPanelButton(
                 data = controlPanelButtonWrappers[2],
-                enabled = (status == Contract.Status.Started) || (status == Contract.Status.SearchFinish) || (status == Contract.Status.Paused),
+                enabled = (status == Status.Started) || (status == Status.SearchFinish) || (status == Status.Paused),
                 pressed = false,
-                onClick = { viewModel.setEvent(Contract.Event.OnResetBtnClick) }
+                onClick = { viewModel.setEvent(Event.OnResetBtnClick) }
             )
         }
     }
@@ -324,7 +357,7 @@ fun GreetingPreviewTop() {
     SearchEmulatorTheme {
         ControlPanel(
             state = Contract.State(
-                status = Contract.Status.Idle,
+                status = Status.Idle,
                 minSideBlockCnt = 20,
                 start = Block(3, 5),
                 dest = Block(14, 14),

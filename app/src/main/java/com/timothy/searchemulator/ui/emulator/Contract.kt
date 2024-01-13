@@ -32,6 +32,8 @@ class Contract{
         data class OnTap(val offset: Offset):Event()
 
         object OnBarrierClearButtonClicked:Event()
+        object OnBarrierUndoButtonClicked:Event()
+        object OnBarrierRedoButtonClicked:Event()
     }
 
 
