@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -29,7 +30,7 @@ import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.theme.color
-import timber.log.Timber
+import com.timothy.searchemulator.ui.emulator.compose.PathBlockType.*
 
 @Composable
 fun BoardView(
@@ -183,7 +184,7 @@ fun DrawScope.drawBarrier(
 
 fun DrawScope.drawPath(path: List<Block>?, brickSize: Int, color: Color) {
     path?.forEach {
-        drawUnitBlockFilled(brickSize, it.first, it.second, color)
+        drawPathBlockFilled(brickSize, it.first, it.second, color)
     }
 }
 
@@ -217,4 +218,86 @@ fun DrawScope.drawUnitBlockFilled(
         size = Size(outerSize, outerSize),
         style = Fill
     )
+}
+
+enum class PathBlockType{
+    TYPE_START_UP, TYPE_START_RIGHT, TYPE_START_DOWN, TYPE_START_LEFT,
+    TYPE_UP_DEST, TYPE_RIGHT_DEST, TYPE_DOWN_DEST, TYPE_LEFT_DEST,
+    TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP,
+    TYPE_UP_DOWN, TYPE_LEFT_RIGHT
+}
+
+fun DrawScope.drawPathBlockFilled(
+    brickSize: Int, x: Int, y: Int,
+    color: Color = Color.Black,
+    type:PathBlockType
+) {
+    val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
+    val padding = brickSize * 0.15f
+//    val outerSize = brickSize - padding * 2
+    val lengthWithPadding = brickSize - padding
+    val lengthWith2Padding = brickSize - padding*2
+
+    var topLeft:Offset? = null
+    var size:Size? = null
+    var path:Path? = null
+    when(type){
+        TYPE_START_UP, TYPE_UP_DEST->{
+            topLeft = absoluteOffset + Offset(padding, 0f)
+            size = Size(lengthWith2Padding, lengthWithPadding)
+        }
+
+        TYPE_START_RIGHT, TYPE_RIGHT_DEST->{
+            topLeft = absoluteOffset + Offset(padding, padding)
+            size = Size(lengthWithPadding, lengthWith2Padding)
+        }
+
+        TYPE_START_DOWN, TYPE_DOWN_DEST->{
+            topLeft = absoluteOffset + Offset(padding, padding)
+            size = Size(lengthWith2Padding, lengthWithPadding)
+        }
+
+        TYPE_START_LEFT, TYPE_LEFT_DEST->{
+            topLeft = absoluteOffset + Offset(0f, padding)
+            size = Size(lengthWithPadding, lengthWith2Padding)
+        }
+
+        TYPE_UP_DOWN->{
+            topLeft = absoluteOffset + Offset(padding, 0f)
+            size = Size(lengthWith2Padding, brickSize.toFloat())
+        }
+
+        TYPE_LEFT_RIGHT->{
+            topLeft = absoluteOffset + Offset(0f, padding)
+            size = Size(brickSize.toFloat(), lengthWith2Padding)
+        }
+
+        TYPE_UP_LEFT->{
+            path = Path().apply {
+                moveTo(absoluteOffset.x+padding, absoluteOffset.y)
+                lineTo(absoluteOffset.x+padding+brickSize.toFloat(), absoluteOffset.y)
+                lineTo(absoluteOffset.x+padding+brickSize.toFloat(), absoluteOffset.y+padding+brickSize.toFloat())
+                lineTo(absoluteOffset.x+0f, absoluteOffset.y+padding+brickSize.toFloat())
+                lineTo(absoluteOffset.x+0f, absoluteOffset.y+padding)
+                lineTo(absoluteOffset.x+padding, absoluteOffset.y+padding)
+                lineTo(absoluteOffset.x+padding, absoluteOffset.y)
+                close()
+            }
+        }
+        else -> {}
+    }
+
+    when(type){
+        TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP->{
+            drawPath(path = path!!, color = color)
+        }
+        else->{
+            drawRect(
+                color = color,
+                topLeft = absoluteOffset + Offset(padding, padding),
+                size = Size(lengthWith2Padding, lengthWith2Padding),
+                style = Fill
+            )
+        }
+    }
 }
