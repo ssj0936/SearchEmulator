@@ -95,6 +95,7 @@ class EmulatorViewModel @Inject constructor(
             }
 
             is Event.OnTap -> {
+                if (currentState.status !is DrawingType) return
                 onTap(event.offset)
             }
 

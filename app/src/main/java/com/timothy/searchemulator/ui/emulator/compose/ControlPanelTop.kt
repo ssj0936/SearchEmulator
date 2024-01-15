@@ -107,7 +107,7 @@ fun ControlPanel(
         ) {
             PlayStateControlPanel(status = state.status)
             SegmentedButtons(options = searchStrategyButtons, state = state)
-            DrawingToolBar()
+            DrawingToolBar(status = state.status)
         }
     }
 }
@@ -115,8 +115,10 @@ fun ControlPanel(
 @Composable
 fun DrawingToolBar(
     modifier: Modifier = Modifier,
+    status: Status,
     viewModel: EmulatorViewModel = hiltViewModel()
 ){
+    val enable = status == Status.Idle
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -124,19 +126,19 @@ fun DrawingToolBar(
         BasicOutlinedButton(
             onClick = {viewModel.setEvent(Event.OnBarrierUndoButtonClicked)},
             iconId = R.drawable.baseline_undo_24,
-            enabled = viewModel.currentState.status == Status.Idle
+            enabled = enable
         )
 
         BasicOutlinedButton(
             onClick = {viewModel.setEvent(Event.OnBarrierClearButtonClicked)},
             iconId = R.drawable.baseline_cleaning_services_24,
-            enabled = viewModel.currentState.status == Status.Idle
+            enabled = enable
         )
 
         BasicOutlinedButton(
             onClick = {viewModel.setEvent(Event.OnBarrierRedoButtonClicked)},
             iconId = R.drawable.baseline_redo_24,
-            enabled = viewModel.currentState.status == Status.Idle
+            enabled = enable
         )
     }
 }
@@ -148,15 +150,6 @@ fun BasicOutlinedButton(
     borderStrokeWidth: Dp = 1.dp,
     enabled: Boolean
 ) {
-//    IconButton(
-//        modifier = Modifier.border(ButtonDefaults.outlinedButtonBorder.copy(width = borderStrokeWidth), shape = ButtonDefaults.outlinedShape),
-//        onClick = onClick,
-//        colors = ButtonDefaults.outlinedButtonColors
-//    ){
-//            Icon(painter = painterResource(id = iconId), contentDescription = null)
-//
-//    }
-
     OutlinedButton(
         onClick = onClick,
         shape = CircleShape,
@@ -271,7 +264,7 @@ fun SegmentedButtons(
 @Composable
 fun PlayStateControlPanel(
     modifier: Modifier = Modifier,
-    status: Contract.Status,
+    status: Status,
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
     Box(

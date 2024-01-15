@@ -18,23 +18,23 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.timothy.searchemulator.ui.base.toBlock
 import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
-import com.timothy.searchemulator.ui.theme.color
-import com.timothy.searchemulator.ui.emulator.compose.PathBlockType.*
 import com.timothy.searchemulator.ui.emulator.x
 import com.timothy.searchemulator.ui.emulator.y
-import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
+import com.timothy.searchemulator.ui.theme.color
 
 @Composable
 fun BoardView(
@@ -91,7 +91,6 @@ fun BoardView(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawBackground(blockSize, matrixW, matrixH, this@with.colorBlockBackground)
                 drawPassedBlocks(state.passed, blockSize, this@with.colorBlockPassed)
-                drawPath(state.path, blockSize, this@with.colorBlockPath)
                 drawBarrier(
                     state.barrier.toList(),
                     matrixW,
@@ -101,6 +100,8 @@ fun BoardView(
                 )
                 drawEndPoint(state.start, blockSize, this@with.colorBlockStart)
                 drawEndPoint(state.dest, blockSize, this@with.colorBlockDest)
+                drawFinalPath(blockSize, state.path, this@with.colorBlockPath)
+
             }
         }
     }
@@ -186,12 +187,6 @@ fun DrawScope.drawBarrier(
     }
 }
 
-fun DrawScope.drawPath(path: List<Block>?, brickSize: Int, color: Color) {
-    path?.forEach {
-        drawPathBlockFilled(brickSize, it.first, it.second, color)
-    }
-}
-
 fun DrawScope.drawUnitBlockOutline(
     brickSize: Int, x: Int, y: Int,
     color: Color
@@ -224,158 +219,232 @@ fun DrawScope.drawUnitBlockFilled(
     )
 }
 
-enum class PathBlockType{
-    TYPE_START_UP, TYPE_START_RIGHT, TYPE_START_DOWN, TYPE_START_LEFT,
-    TYPE_UP_DEST, TYPE_RIGHT_DEST, TYPE_DOWN_DEST, TYPE_LEFT_DEST,
-    TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP,
-    TYPE_UP_DOWN, TYPE_LEFT_RIGHT
-}
-
-fun DrawScope.drawPathBlockFilled(
-    brickSize: Int, x: Int, y: Int,
+fun DrawScope.drawFinalPath(
+    brickSize: Int,
+    points: List<Block>,
     color: Color = Color.Black,
-    type:PathBlockType = TYPE_START_UP
+    strokeWidth:Float = 8.dp.toPx(),
 ) {
-    val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
-    val padding = brickSize * 0.25f
-//    val outerSize = brickSize - padding * 2
-    val lengthWithPadding = brickSize - padding
-    val lengthWith2Padding = brickSize - padding*2
+    if (points.size < 2) return
 
-    var topLeft:Offset? = null
-    var size:Size? = null
-    var path:Path? = null
-    when(type){
-        TYPE_START_UP, TYPE_UP_DEST->{
-            topLeft = absoluteOffset + Offset(padding, 0f)
-            size = Size(lengthWith2Padding, lengthWithPadding)
-        }
-
-        TYPE_START_RIGHT, TYPE_RIGHT_DEST->{
-            topLeft = absoluteOffset + Offset(padding, padding)
-            size = Size(lengthWithPadding, lengthWith2Padding)
-        }
-
-        TYPE_START_DOWN, TYPE_DOWN_DEST->{
-            topLeft = absoluteOffset + Offset(padding, padding)
-            size = Size(lengthWith2Padding, lengthWithPadding)
-        }
-
-        TYPE_START_LEFT, TYPE_LEFT_DEST->{
-            topLeft = absoluteOffset + Offset(0f, padding)
-            size = Size(lengthWithPadding, lengthWith2Padding)
-        }
-
-        TYPE_UP_DOWN->{
-            topLeft = absoluteOffset + Offset(padding, 0f)
-            size = Size(lengthWith2Padding, brickSize.toFloat())
-        }
-
-        TYPE_LEFT_RIGHT->{
-            topLeft = absoluteOffset + Offset(0f, padding)
-            size = Size(brickSize.toFloat(), lengthWith2Padding)
-        }
-
-        TYPE_UP_LEFT->{
-            path = Path().apply {
-                moveTo(absoluteOffset.x+padding, absoluteOffset.y)
-                lineTo(absoluteOffset.x+padding+ lengthWith2Padding, absoluteOffset.y)
-                lineTo(absoluteOffset.x+padding+ lengthWith2Padding, absoluteOffset.y+lengthWithPadding)
-                lineTo(absoluteOffset.x, absoluteOffset.y+lengthWithPadding)
-                lineTo(absoluteOffset.x, absoluteOffset.y+padding)
-                lineTo(absoluteOffset.x+padding, absoluteOffset.y+padding)
-                lineTo(absoluteOffset.x+padding, absoluteOffset.y)
-                close()
-            }
-        }
-
-        TYPE_LEFT_DOWN->{
-            path = Path().apply {
-                moveTo(absoluteOffset.x, absoluteOffset.y + padding)
-                lineTo(absoluteOffset.x+lengthWithPadding, absoluteOffset.y + padding)
-                lineTo(absoluteOffset.x+lengthWithPadding, absoluteOffset.y + brickSize.toFloat())
-                lineTo(absoluteOffset.x+padding, absoluteOffset.y + brickSize.toFloat())
-                lineTo(absoluteOffset.x+padding, absoluteOffset.y+lengthWithPadding)
-                lineTo(absoluteOffset.x, absoluteOffset.y+lengthWithPadding)
-                lineTo(absoluteOffset.x, absoluteOffset.y + padding)
-                close()
-            }
-        }
-
-        TYPE_DOWN_RIGHT->{
-            path = Path().apply {
-                moveTo(absoluteOffset.x + padding, absoluteOffset.y + padding)
-                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + padding)
-                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + lengthWithPadding)
-                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + lengthWithPadding)
-                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + brickSize.toFloat())
-                lineTo(absoluteOffset.x + padding, absoluteOffset.y + brickSize.toFloat())
-                lineTo(absoluteOffset.x + padding, absoluteOffset.y + padding)
-                close()
-            }
-        }
-
-        TYPE_RIGHT_UP->{
-            path = Path().apply {
-                moveTo(absoluteOffset.x+padding, absoluteOffset.y)
-                lineTo(absoluteOffset.x+lengthWithPadding, absoluteOffset.y)
-                lineTo(absoluteOffset.x+lengthWithPadding, absoluteOffset.y+padding)
-                lineTo(absoluteOffset.x+brickSize.toFloat(), absoluteOffset.y+padding)
-                lineTo(absoluteOffset.x+brickSize.toFloat(), absoluteOffset.y+lengthWithPadding)
-                lineTo(absoluteOffset.x+padding, absoluteOffset.y+lengthWithPadding)
-                lineTo(absoluteOffset.x+padding, absoluteOffset.y)
-                close()
-            }
+    val pointsOffset = points.map {
+        Offset(
+            brickSize * it.x.toFloat() + brickSize / 2,
+            brickSize * it.y.toFloat() + brickSize / 2
+        )
+    }
+    val path = Path().apply {
+        moveTo(pointsOffset.first().x, pointsOffset.first().y)
+        for (i in 1 until pointsOffset.size) {
+            lineTo(pointsOffset[i].x, pointsOffset[i].y)
         }
     }
 
-    when(type){
-        TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP->{
-            drawPath(path = path!!, color = color)
-        }
-        else->{
-            drawRect(
-                color = color,
-                topLeft = topLeft!!,
-                size = size!!,
-                style = Fill
-            )
-        }
-    }
+    drawPath(
+        path = path,
+        color = color,
+        style = Stroke(
+            width = strokeWidth,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    )
 }
 
-@Preview
-@Composable
-fun Preview(){
-
-    val mockBlock = listOf(
-        Block(0,0),Block(0,1),Block(0,2),Block(0,3),
-        Block(1,0),Block(1,1),Block(1,2),Block(1,3),
-        Block(2,0),Block(2,1),Block(2,2),Block(2,3),Block(2,4),Block(2,5),
-    )
-    val mockType = listOf<PathBlockType>(
-        TYPE_START_UP, TYPE_START_RIGHT, TYPE_START_DOWN, TYPE_START_LEFT,
-        TYPE_UP_DEST, TYPE_RIGHT_DEST, TYPE_DOWN_DEST, TYPE_LEFT_DEST,
-        TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP,
-        TYPE_UP_DOWN, TYPE_LEFT_RIGHT
-    )
-    SearchEmulatorTheme {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            for(i in mockBlock.indices){
-                drawPathBlockFilled(
-                    brickSize=350,
-                    x = mockBlock[i].x,
-                    y = mockBlock[i].y,
-                    type = mockType[i]
-                )
-                drawUnitBlockOutline(
-                    brickSize=350,
-                    x = mockBlock[i].x,
-                    y = mockBlock[i].y,
-                    color = Color.Red
-                )
-            }
-        }
-    }
-
-}
+//ABANDON
+//enum class PathBlockType {
+//    TYPE_START_UP, TYPE_START_RIGHT, TYPE_START_DOWN, TYPE_START_LEFT,
+//    TYPE_UP_DEST, TYPE_RIGHT_DEST, TYPE_DOWN_DEST, TYPE_LEFT_DEST,
+//    TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP,
+//    TYPE_UP_DOWN, TYPE_LEFT_RIGHT
+//}
+//
+//fun DrawScope.drawPath(path: List<Block>?, brickSize: Int, color: Color) {
+//    path?.forEachIndexed { index, block ->
+//        val type = if (index == 0) {
+//            if (path[1].x == block.x) {
+//                if (path[1].y > block.y) TYPE_START_DOWN else TYPE_START_UP
+//            } else {
+//                if (path[1].x > block.x) TYPE_START_RIGHT else TYPE_START_LEFT
+//            }
+//        } else if (index == path.lastIndex) {
+//            if (path[index - 1].x == block.x) {
+//                if (path[index - 1].y > block.y) TYPE_DOWN_DEST else TYPE_UP_DEST
+//            } else {
+//                if (path[index - 1].x > block.x) TYPE_RIGHT_DEST else TYPE_LEFT_DEST
+//            }
+//        } else {
+//
+//            if (path[index - 1].x == path[index + 1].x)
+//                TYPE_UP_DOWN
+//            else if (path[index - 1].y == path[index + 1].y)
+//                TYPE_LEFT_RIGHT
+//            else {
+//                val midX = (path[index - 1].x.toFloat() + path[index + 1].x) / 2
+//                val midY = (path[index - 1].y.toFloat() + path[index + 1].y) / 2
+//                if (midX >= block.x && midY >= block.y)
+//                    TYPE_DOWN_RIGHT
+//                else if (midX >= block.x && midY <= block.y)
+//                    TYPE_RIGHT_UP
+//                else if (midX <= block.x && midY >= block.y)
+//                    TYPE_LEFT_DOWN
+//                else
+//                    TYPE_UP_LEFT
+//            }
+//        }
+//        drawPathBlockFilled(brickSize, block.x, block.y, color, type)
+//    }
+//}
+//
+//fun DrawScope.drawPathBlockFilled(
+//    brickSize: Int, x: Int, y: Int,
+//    color: Color = Color.Black,
+//    type: PathBlockType = TYPE_START_UP,
+//    shrinkPercent: Float = 0.25f
+//) {
+//    val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
+//    val padding = brickSize * shrinkPercent
+//    val lengthWithPadding = brickSize - padding
+//    val lengthWith2Padding = brickSize - padding * 2
+//
+//    var topLeft: Offset? = null
+//    var size: Size? = null
+//    var path: Path? = null
+//    when (type) {
+//        TYPE_START_UP, TYPE_UP_DEST -> {
+//            topLeft = absoluteOffset + Offset(padding, 0f)
+//            size = Size(lengthWith2Padding, lengthWithPadding)
+//        }
+//
+//        TYPE_START_RIGHT, TYPE_RIGHT_DEST -> {
+//            topLeft = absoluteOffset + Offset(padding, padding)
+//            size = Size(lengthWithPadding, lengthWith2Padding)
+//        }
+//
+//        TYPE_START_DOWN, TYPE_DOWN_DEST -> {
+//            topLeft = absoluteOffset + Offset(padding, padding)
+//            size = Size(lengthWith2Padding, lengthWithPadding)
+//        }
+//
+//        TYPE_START_LEFT, TYPE_LEFT_DEST -> {
+//            topLeft = absoluteOffset + Offset(0f, padding)
+//            size = Size(lengthWithPadding, lengthWith2Padding)
+//        }
+//
+//        TYPE_UP_DOWN -> {
+//            topLeft = absoluteOffset + Offset(padding, 0f)
+//            size = Size(lengthWith2Padding, brickSize.toFloat())
+//        }
+//
+//        TYPE_LEFT_RIGHT -> {
+//            topLeft = absoluteOffset + Offset(0f, padding)
+//            size = Size(brickSize.toFloat(), lengthWith2Padding)
+//        }
+//
+//        TYPE_UP_LEFT -> {
+//            path = Path().apply {
+//                moveTo(absoluteOffset.x + padding, absoluteOffset.y)
+//                lineTo(absoluteOffset.x + padding + lengthWith2Padding, absoluteOffset.y)
+//                lineTo(
+//                    absoluteOffset.x + padding + lengthWith2Padding,
+//                    absoluteOffset.y + lengthWithPadding
+//                )
+//                lineTo(absoluteOffset.x, absoluteOffset.y + lengthWithPadding)
+//                lineTo(absoluteOffset.x, absoluteOffset.y + padding)
+//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + padding)
+//                lineTo(absoluteOffset.x + padding, absoluteOffset.y)
+//                close()
+//            }
+//        }
+//
+//        TYPE_LEFT_DOWN -> {
+//            path = Path().apply {
+//                moveTo(absoluteOffset.x, absoluteOffset.y + padding)
+//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + padding)
+//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + brickSize.toFloat())
+//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + brickSize.toFloat())
+//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + lengthWithPadding)
+//                lineTo(absoluteOffset.x, absoluteOffset.y + lengthWithPadding)
+//                lineTo(absoluteOffset.x, absoluteOffset.y + padding)
+//                close()
+//            }
+//        }
+//
+//        TYPE_DOWN_RIGHT -> {
+//            path = Path().apply {
+//                moveTo(absoluteOffset.x + padding, absoluteOffset.y + padding)
+//                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + padding)
+//                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + lengthWithPadding)
+//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + lengthWithPadding)
+//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + brickSize.toFloat())
+//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + brickSize.toFloat())
+//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + padding)
+//                close()
+//            }
+//        }
+//
+//        TYPE_RIGHT_UP -> {
+//            path = Path().apply {
+//                moveTo(absoluteOffset.x + padding, absoluteOffset.y)
+//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y)
+//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + padding)
+//                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + padding)
+//                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + lengthWithPadding)
+//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + lengthWithPadding)
+//                lineTo(absoluteOffset.x + padding, absoluteOffset.y)
+//                close()
+//            }
+//        }
+//    }
+//
+//    when (type) {
+//        TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP -> {
+//            drawPath(path = path!!, color = color)
+//        }
+//
+//        else -> {
+//            drawRect(
+//                color = color,
+//                topLeft = topLeft!!,
+//                size = size!!,
+//                style = Fill
+//            )
+//        }
+//    }
+//}
+//
+//@Preview
+//@Composable
+//fun Preview() {
+//
+//    val mockBlock = listOf(
+//        Block(0, 0), Block(0, 1), Block(0, 2), Block(0, 3),
+//        Block(1, 0), Block(1, 1), Block(1, 2), Block(1, 3),
+//        Block(2, 0), Block(2, 1), Block(2, 2), Block(2, 3), Block(2, 4), Block(2, 5),
+//    )
+//    val mockType = listOf<PathBlockType>(
+//        TYPE_START_UP, TYPE_START_RIGHT, TYPE_START_DOWN, TYPE_START_LEFT,
+//        TYPE_UP_DEST, TYPE_RIGHT_DEST, TYPE_DOWN_DEST, TYPE_LEFT_DEST,
+//        TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP,
+//        TYPE_UP_DOWN, TYPE_LEFT_RIGHT
+//    )
+//    SearchEmulatorTheme {
+//        Canvas(modifier = Modifier.fillMaxSize()) {
+//            for (i in mockBlock.indices) {
+//                drawPathBlockFilled(
+//                    brickSize = 350,
+//                    x = mockBlock[i].x,
+//                    y = mockBlock[i].y,
+//                    type = mockType[i]
+//                )
+//                drawUnitBlockOutline(
+//                    brickSize = 350,
+//                    x = mockBlock[i].x,
+//                    y = mockBlock[i].y,
+//                    color = Color.Red
+//                )
+//            }
+//        }
+//    }
+//
+//}
