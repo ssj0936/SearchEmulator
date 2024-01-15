@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.timothy.searchemulator.ui.base.toBlock
 import com.timothy.searchemulator.ui.emulator.Block
@@ -31,6 +32,9 @@ import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.theme.color
 import com.timothy.searchemulator.ui.emulator.compose.PathBlockType.*
+import com.timothy.searchemulator.ui.emulator.x
+import com.timothy.searchemulator.ui.emulator.y
+import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 
 @Composable
 fun BoardView(
@@ -230,10 +234,10 @@ enum class PathBlockType{
 fun DrawScope.drawPathBlockFilled(
     brickSize: Int, x: Int, y: Int,
     color: Color = Color.Black,
-    type:PathBlockType
+    type:PathBlockType = TYPE_START_UP
 ) {
     val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
-    val padding = brickSize * 0.15f
+    val padding = brickSize * 0.25f
 //    val outerSize = brickSize - padding * 2
     val lengthWithPadding = brickSize - padding
     val lengthWith2Padding = brickSize - padding*2
@@ -275,16 +279,54 @@ fun DrawScope.drawPathBlockFilled(
         TYPE_UP_LEFT->{
             path = Path().apply {
                 moveTo(absoluteOffset.x+padding, absoluteOffset.y)
-                lineTo(absoluteOffset.x+padding+brickSize.toFloat(), absoluteOffset.y)
-                lineTo(absoluteOffset.x+padding+brickSize.toFloat(), absoluteOffset.y+padding+brickSize.toFloat())
-                lineTo(absoluteOffset.x+0f, absoluteOffset.y+padding+brickSize.toFloat())
-                lineTo(absoluteOffset.x+0f, absoluteOffset.y+padding)
+                lineTo(absoluteOffset.x+padding+ lengthWith2Padding, absoluteOffset.y)
+                lineTo(absoluteOffset.x+padding+ lengthWith2Padding, absoluteOffset.y+lengthWithPadding)
+                lineTo(absoluteOffset.x, absoluteOffset.y+lengthWithPadding)
+                lineTo(absoluteOffset.x, absoluteOffset.y+padding)
                 lineTo(absoluteOffset.x+padding, absoluteOffset.y+padding)
                 lineTo(absoluteOffset.x+padding, absoluteOffset.y)
                 close()
             }
         }
-        else -> {}
+
+        TYPE_LEFT_DOWN->{
+            path = Path().apply {
+                moveTo(absoluteOffset.x, absoluteOffset.y + padding)
+                lineTo(absoluteOffset.x+lengthWithPadding, absoluteOffset.y + padding)
+                lineTo(absoluteOffset.x+lengthWithPadding, absoluteOffset.y + brickSize.toFloat())
+                lineTo(absoluteOffset.x+padding, absoluteOffset.y + brickSize.toFloat())
+                lineTo(absoluteOffset.x+padding, absoluteOffset.y+lengthWithPadding)
+                lineTo(absoluteOffset.x, absoluteOffset.y+lengthWithPadding)
+                lineTo(absoluteOffset.x, absoluteOffset.y + padding)
+                close()
+            }
+        }
+
+        TYPE_DOWN_RIGHT->{
+            path = Path().apply {
+                moveTo(absoluteOffset.x + padding, absoluteOffset.y + padding)
+                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + padding)
+                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + lengthWithPadding)
+                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + lengthWithPadding)
+                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + brickSize.toFloat())
+                lineTo(absoluteOffset.x + padding, absoluteOffset.y + brickSize.toFloat())
+                lineTo(absoluteOffset.x + padding, absoluteOffset.y + padding)
+                close()
+            }
+        }
+
+        TYPE_RIGHT_UP->{
+            path = Path().apply {
+                moveTo(absoluteOffset.x+padding, absoluteOffset.y)
+                lineTo(absoluteOffset.x+lengthWithPadding, absoluteOffset.y)
+                lineTo(absoluteOffset.x+lengthWithPadding, absoluteOffset.y+padding)
+                lineTo(absoluteOffset.x+brickSize.toFloat(), absoluteOffset.y+padding)
+                lineTo(absoluteOffset.x+brickSize.toFloat(), absoluteOffset.y+lengthWithPadding)
+                lineTo(absoluteOffset.x+padding, absoluteOffset.y+lengthWithPadding)
+                lineTo(absoluteOffset.x+padding, absoluteOffset.y)
+                close()
+            }
+        }
     }
 
     when(type){
@@ -294,10 +336,46 @@ fun DrawScope.drawPathBlockFilled(
         else->{
             drawRect(
                 color = color,
-                topLeft = absoluteOffset + Offset(padding, padding),
-                size = Size(lengthWith2Padding, lengthWith2Padding),
+                topLeft = topLeft!!,
+                size = size!!,
                 style = Fill
             )
         }
     }
+}
+
+@Preview
+@Composable
+fun Preview(){
+
+    val mockBlock = listOf(
+        Block(0,0),Block(0,1),Block(0,2),Block(0,3),
+        Block(1,0),Block(1,1),Block(1,2),Block(1,3),
+        Block(2,0),Block(2,1),Block(2,2),Block(2,3),Block(2,4),Block(2,5),
+    )
+    val mockType = listOf<PathBlockType>(
+        TYPE_START_UP, TYPE_START_RIGHT, TYPE_START_DOWN, TYPE_START_LEFT,
+        TYPE_UP_DEST, TYPE_RIGHT_DEST, TYPE_DOWN_DEST, TYPE_LEFT_DEST,
+        TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP,
+        TYPE_UP_DOWN, TYPE_LEFT_RIGHT
+    )
+    SearchEmulatorTheme {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            for(i in mockBlock.indices){
+                drawPathBlockFilled(
+                    brickSize=350,
+                    x = mockBlock[i].x,
+                    y = mockBlock[i].y,
+                    type = mockType[i]
+                )
+                drawUnitBlockOutline(
+                    brickSize=350,
+                    x = mockBlock[i].x,
+                    y = mockBlock[i].y,
+                    color = Color.Red
+                )
+            }
+        }
+    }
+
 }
