@@ -1,12 +1,18 @@
 package com.timothy.searchemulator.ui.emulator.compose
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -26,28 +32,31 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
+import com.timothy.searchemulator.model.MS_PER_PATH_BLOCK
+import com.timothy.searchemulator.model.getMovementSpeedDelay
 import com.timothy.searchemulator.ui.base.toBlock
 import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
+import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
 import com.timothy.searchemulator.ui.emulator.x
 import com.timothy.searchemulator.ui.emulator.y
+import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import com.timothy.searchemulator.ui.theme.color
 
 @Composable
 fun BoardView(
     modifier: Modifier,
     state: Contract.State,
-    viewModel: EmulatorViewModel = hiltViewModel()
+    viewModel: EmulatorViewModel = hiltViewModel(),
 ) {
     var availableW by remember { mutableIntStateOf(0) }
     var availableH by remember { mutableIntStateOf(0) }
-
-    val blockSize = state.blockSize
-    val matrixW = state.matrixW
-    val matrixH = state.matrixH
 
     val drawingPosition = remember { mutableStateOf(Block(0, 0)) }
 
@@ -86,24 +95,112 @@ fun BoardView(
                     )
                 )
             }
-        }) {
-        with(MaterialTheme.color) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawBackground(blockSize, matrixW, matrixH, this@with.colorBlockBackground)
-                drawPassedBlocks(state.passed, blockSize, this@with.colorBlockPassed)
-                drawBarrier(
-                    state.barrier.toList(),
-                    matrixW,
-                    matrixH,
-                    blockSize,
-                    this@with.colorBlockBarrier
-                )
-                drawEndPoint(state.start, blockSize, this@with.colorBlockStart)
-                drawEndPoint(state.dest, blockSize, this@with.colorBlockDest)
-                drawFinalPath(blockSize, state.path, this@with.colorBlockPath)
-
-            }
         }
+    ) {
+        BoardCanvas(
+            modifier = Modifier.fillMaxSize(),
+            state = state,
+            colorBackground = MaterialTheme.color.colorBlockBackground,
+            colorPassed = MaterialTheme.color.colorBlockPassed,
+            colorBarrier = MaterialTheme.color.colorBlockBarrier,
+            colorStartPoint = MaterialTheme.color.colorBlockStart,
+            colorDestPoint = MaterialTheme.color.colorBlockDest
+        )
+        FinalPathCanvas(
+            modifier = Modifier.fillMaxSize(),
+            state = state,
+            pathColor = MaterialTheme.color.colorBlockPath
+        )
+    }
+}
+
+@Composable
+fun BoardCanvas(
+    modifier: Modifier = Modifier,
+    state: Contract.State,
+    colorBackground: Color,
+    colorPassed: Color,
+    colorBarrier: Color,
+    colorStartPoint: Color,
+    colorDestPoint: Color,
+) {
+    val blockSize = state.blockSize
+    val matrixW = state.matrixW
+    val matrixH = state.matrixH
+
+    Canvas(modifier = modifier) {
+        drawBackground(blockSize, matrixW, matrixH, colorBackground)
+        drawPassedBlocks(state.passed, blockSize, colorPassed)
+        drawBarrier(
+            state.barrier.toList(),
+            matrixW,
+            matrixH,
+            blockSize,
+            colorBarrier
+        )
+        drawEndPoint(state.start, blockSize, colorStartPoint)
+        drawEndPoint(state.dest, blockSize, colorDestPoint)
+    }
+
+}
+
+@Composable
+fun FinalPathCanvas(
+    modifier: Modifier = Modifier,
+    state: Contract.State,
+    pathColor: Color,
+    strokeWidth: Dp = 8.dp
+) {
+    if (state.path.isEmpty()) return
+
+    val blockSize = state.blockSize
+    val finalPath = state.path
+
+    val currPath: Path = remember { Path() }
+    val finalPathOffsets: List<Offset> = remember {
+        finalPath.map {
+            Offset(
+                blockSize * it.x.toFloat() + blockSize / 2,
+                blockSize * it.y.toFloat() + blockSize / 2
+            )
+        }
+    }
+    var targetIndexValue by remember {
+        mutableIntStateOf(0)
+    }
+
+    val currentIndexValue by animateIntAsState(
+        targetValue = targetIndexValue,
+        animationSpec = tween(
+            durationMillis = finalPath.size * MS_PER_PATH_BLOCK,
+            easing = LinearEasing
+        ), label = ""
+    )
+    //animation Path
+    Canvas(modifier = modifier) {
+        if (currentIndexValue == 0) {
+            currPath.moveTo(finalPathOffsets.first().x, finalPathOffsets.first().y)
+        } else {
+            currPath.lineTo(
+                finalPathOffsets[currentIndexValue].x,
+                finalPathOffsets[currentIndexValue].y
+            )
+        }
+
+        drawPath(
+            path = currPath,
+            color = pathColor,
+            style = Stroke(
+                width = strokeWidth.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+        )
+    }
+
+    //set targetValue
+    LaunchedEffect(key1 = Unit) {
+        targetIndexValue = finalPath.size - 1
     }
 }
 
@@ -219,232 +316,30 @@ fun DrawScope.drawUnitBlockFilled(
     )
 }
 
-fun DrawScope.drawFinalPath(
-    brickSize: Int,
-    points: List<Block>,
-    color: Color = Color.Black,
-    strokeWidth:Float = 8.dp.toPx(),
-) {
-    if (points.size < 2) return
-
-    val pointsOffset = points.map {
-        Offset(
-            brickSize * it.x.toFloat() + brickSize / 2,
-            brickSize * it.y.toFloat() + brickSize / 2
+@Preview
+@Composable
+fun PreviewBoard(){
+    SearchEmulatorTheme {
+        BoardView(
+            modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+            state = Contract.State(
+                status = Contract.Status.Idle,
+                minSideBlockCnt = 18,
+                start = Block(14, 11),
+                dest = Block(13, 23),
+                barrier = hashSetOf(Block(4, 4), Block(8, 9), Block(12, 14), Block(12, 15), Block(16, 19), Block(16, 20), Block(4, 9), Block(8, 14), Block(12, 18), Block(0, 9), Block(8, 18), Block(4, 15), Block(4, 18), Block(17, 6), Block(17, 7), Block(13, 7), Block(9, 3), Block(13, 9), Block(17, 14), Block(9, 7), Block(5, 4), Block(9, 9), Block(13, 14), Block(1, 4), Block(5, 9), Block(9, 14), Block(13, 18), Block(1, 9), Block(1, 10), Block(5, 14), Block(9, 18), Block(5, 15), Block(5, 18), Block(5, 21), Block(5, 22), Block(5, 23), Block(5, 24), Block(5, 25), Block(14, 7), Block(10, 3), Block(10, 7), Block(6, 4), Block(10, 9), Block(14, 14), Block(6, 6), Block(2, 3), Block(6, 9), Block(10, 14), Block(14, 18), Block(6, 10), Block(10, 15), Block(14, 19), Block(6, 11), Block(6, 12), Block(2, 9), Block(6, 14), Block(10, 18), Block(10, 20), Block(10, 21), Block(6, 18), Block(10, 22), Block(15, 7), Block(11, 3), Block(11, 7), Block(7, 3), Block(7, 4), Block(11, 9), Block(15, 14), Block(7, 7), Block(3, 3), Block(3, 4), Block(7, 9), Block(11, 15), Block(15, 19), Block(3, 9), Block(7, 14), Block(11, 18), Block(11, 19), Block(11, 20), Block(7, 18), Block(3, 15), Block(3, 16), Block(3, 17), Block(16, 7), Block(12, 7), Block(8, 3), Block(12, 9), Block(16, 14), Block(8, 7)),
+                searchStrategy = SearchBFS.instance,
+                searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat()),
+                path = listOf(Block(14, 11), Block(13, 11), Block(12, 11), Block(11, 11), Block(10, 11), Block(9, 11), Block(8, 11), Block(7, 11), Block(7, 12), Block(7, 13), Block(6, 13), Block(5, 13), Block(4, 13), Block(3, 13), Block(2, 13), Block(1, 13), Block(0, 13), Block(0, 14), Block(0, 15), Block(0, 16), Block(0, 17), Block(0, 18), Block(0, 19), Block(0, 20), Block(0, 21), Block(0, 22), Block(0, 23), Block(0, 24), Block(0, 25), Block(1, 25), Block(2, 25), Block(3, 25), Block(4, 25), Block(4, 24), Block(3, 24), Block(2, 24), Block(1, 24), Block(1, 23), Block(2, 23), Block(3, 23), Block(4, 23), Block(4, 22), Block(3, 22), Block(2, 22), Block(1, 22), Block(1, 21), Block(2, 21), Block(3, 21), Block(4, 21), Block(4, 20), Block(3, 20), Block(2, 20), Block(1, 20), Block(1, 19), Block(2, 19), Block(3, 19), Block(4, 19), Block(5, 19), Block(5, 20), Block(6, 20), Block(6, 21), Block(6, 22), Block(6, 23), Block(6, 24), Block(6, 25), Block(7, 25), Block(8, 25), Block(9, 25), Block(10, 25), Block(11, 25), Block(12, 25), Block(13, 25), Block(14, 25), Block(15, 25), Block(16, 25), Block(17, 25), Block(17, 24), Block(16, 24), Block(15, 24), Block(14, 24), Block(13, 24), Block(12, 24), Block(11, 24), Block(10, 24), Block(9, 24), Block(8, 24), Block(7, 24), Block(7, 23), Block(8, 23), Block(9, 23), Block(10, 23), Block(11, 23), Block(12, 23), Block(13, 23)),
+                passed = listOf(Block(14, 11), Block(13, 11), Block(12, 11), Block(11, 11), Block(10, 11), Block(9, 11), Block(8, 11), Block(7, 11), Block(7, 12), Block(7, 13), Block(6, 13), Block(5, 13), Block(4, 13), Block(3, 13), Block(2, 13), Block(1, 13), Block(0, 13), Block(0, 14), Block(0, 15), Block(0, 16), Block(0, 17), Block(0, 18), Block(0, 19), Block(0, 20), Block(0, 21), Block(0, 22), Block(0, 23), Block(0, 24), Block(0, 25), Block(1, 25), Block(2, 25), Block(3, 25), Block(4, 25), Block(4, 24), Block(3, 24), Block(2, 24), Block(1, 24), Block(1, 23), Block(2, 23), Block(3, 23), Block(4, 23), Block(4, 22), Block(3, 22), Block(2, 22), Block(1, 22), Block(1, 21), Block(2, 21), Block(3, 21), Block(4, 21), Block(4, 20), Block(3, 20), Block(2, 20), Block(1, 20), Block(1, 19), Block(2, 19), Block(3, 19), Block(4, 19), Block(5, 19), Block(5, 20), Block(6, 20), Block(6, 21), Block(6, 22), Block(6, 23), Block(6, 24), Block(6, 25), Block(7, 25), Block(8, 25), Block(9, 25), Block(10, 25), Block(11, 25), Block(12, 25), Block(13, 25), Block(14, 25), Block(15, 25), Block(16, 25), Block(17, 25), Block(17, 24), Block(16, 24), Block(15, 24), Block(14, 24), Block(13, 24), Block(12, 24), Block(11, 24), Block(10, 24), Block(9, 24), Block(8, 24), Block(7, 24), Block(7, 23), Block(8, 23), Block(9, 23), Block(10, 23), Block(11, 23), Block(12, 23)),
+                width = 890,
+                height = 1280,
+                blockSize = 49,
+                matrixW = 18,
+                matrixH = 26
+            )
         )
     }
-    val path = Path().apply {
-        moveTo(pointsOffset.first().x, pointsOffset.first().y)
-        for (i in 1 until pointsOffset.size) {
-            lineTo(pointsOffset[i].x, pointsOffset[i].y)
-        }
-    }
-
-    drawPath(
-        path = path,
-        color = color,
-        style = Stroke(
-            width = strokeWidth,
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round
-        )
-    )
 }
-
-//ABANDON
-//enum class PathBlockType {
-//    TYPE_START_UP, TYPE_START_RIGHT, TYPE_START_DOWN, TYPE_START_LEFT,
-//    TYPE_UP_DEST, TYPE_RIGHT_DEST, TYPE_DOWN_DEST, TYPE_LEFT_DEST,
-//    TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP,
-//    TYPE_UP_DOWN, TYPE_LEFT_RIGHT
-//}
-//
-//fun DrawScope.drawPath(path: List<Block>?, brickSize: Int, color: Color) {
-//    path?.forEachIndexed { index, block ->
-//        val type = if (index == 0) {
-//            if (path[1].x == block.x) {
-//                if (path[1].y > block.y) TYPE_START_DOWN else TYPE_START_UP
-//            } else {
-//                if (path[1].x > block.x) TYPE_START_RIGHT else TYPE_START_LEFT
-//            }
-//        } else if (index == path.lastIndex) {
-//            if (path[index - 1].x == block.x) {
-//                if (path[index - 1].y > block.y) TYPE_DOWN_DEST else TYPE_UP_DEST
-//            } else {
-//                if (path[index - 1].x > block.x) TYPE_RIGHT_DEST else TYPE_LEFT_DEST
-//            }
-//        } else {
-//
-//            if (path[index - 1].x == path[index + 1].x)
-//                TYPE_UP_DOWN
-//            else if (path[index - 1].y == path[index + 1].y)
-//                TYPE_LEFT_RIGHT
-//            else {
-//                val midX = (path[index - 1].x.toFloat() + path[index + 1].x) / 2
-//                val midY = (path[index - 1].y.toFloat() + path[index + 1].y) / 2
-//                if (midX >= block.x && midY >= block.y)
-//                    TYPE_DOWN_RIGHT
-//                else if (midX >= block.x && midY <= block.y)
-//                    TYPE_RIGHT_UP
-//                else if (midX <= block.x && midY >= block.y)
-//                    TYPE_LEFT_DOWN
-//                else
-//                    TYPE_UP_LEFT
-//            }
-//        }
-//        drawPathBlockFilled(brickSize, block.x, block.y, color, type)
-//    }
-//}
-//
-//fun DrawScope.drawPathBlockFilled(
-//    brickSize: Int, x: Int, y: Int,
-//    color: Color = Color.Black,
-//    type: PathBlockType = TYPE_START_UP,
-//    shrinkPercent: Float = 0.25f
-//) {
-//    val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
-//    val padding = brickSize * shrinkPercent
-//    val lengthWithPadding = brickSize - padding
-//    val lengthWith2Padding = brickSize - padding * 2
-//
-//    var topLeft: Offset? = null
-//    var size: Size? = null
-//    var path: Path? = null
-//    when (type) {
-//        TYPE_START_UP, TYPE_UP_DEST -> {
-//            topLeft = absoluteOffset + Offset(padding, 0f)
-//            size = Size(lengthWith2Padding, lengthWithPadding)
-//        }
-//
-//        TYPE_START_RIGHT, TYPE_RIGHT_DEST -> {
-//            topLeft = absoluteOffset + Offset(padding, padding)
-//            size = Size(lengthWithPadding, lengthWith2Padding)
-//        }
-//
-//        TYPE_START_DOWN, TYPE_DOWN_DEST -> {
-//            topLeft = absoluteOffset + Offset(padding, padding)
-//            size = Size(lengthWith2Padding, lengthWithPadding)
-//        }
-//
-//        TYPE_START_LEFT, TYPE_LEFT_DEST -> {
-//            topLeft = absoluteOffset + Offset(0f, padding)
-//            size = Size(lengthWithPadding, lengthWith2Padding)
-//        }
-//
-//        TYPE_UP_DOWN -> {
-//            topLeft = absoluteOffset + Offset(padding, 0f)
-//            size = Size(lengthWith2Padding, brickSize.toFloat())
-//        }
-//
-//        TYPE_LEFT_RIGHT -> {
-//            topLeft = absoluteOffset + Offset(0f, padding)
-//            size = Size(brickSize.toFloat(), lengthWith2Padding)
-//        }
-//
-//        TYPE_UP_LEFT -> {
-//            path = Path().apply {
-//                moveTo(absoluteOffset.x + padding, absoluteOffset.y)
-//                lineTo(absoluteOffset.x + padding + lengthWith2Padding, absoluteOffset.y)
-//                lineTo(
-//                    absoluteOffset.x + padding + lengthWith2Padding,
-//                    absoluteOffset.y + lengthWithPadding
-//                )
-//                lineTo(absoluteOffset.x, absoluteOffset.y + lengthWithPadding)
-//                lineTo(absoluteOffset.x, absoluteOffset.y + padding)
-//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + padding)
-//                lineTo(absoluteOffset.x + padding, absoluteOffset.y)
-//                close()
-//            }
-//        }
-//
-//        TYPE_LEFT_DOWN -> {
-//            path = Path().apply {
-//                moveTo(absoluteOffset.x, absoluteOffset.y + padding)
-//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + padding)
-//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + brickSize.toFloat())
-//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + brickSize.toFloat())
-//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + lengthWithPadding)
-//                lineTo(absoluteOffset.x, absoluteOffset.y + lengthWithPadding)
-//                lineTo(absoluteOffset.x, absoluteOffset.y + padding)
-//                close()
-//            }
-//        }
-//
-//        TYPE_DOWN_RIGHT -> {
-//            path = Path().apply {
-//                moveTo(absoluteOffset.x + padding, absoluteOffset.y + padding)
-//                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + padding)
-//                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + lengthWithPadding)
-//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + lengthWithPadding)
-//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + brickSize.toFloat())
-//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + brickSize.toFloat())
-//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + padding)
-//                close()
-//            }
-//        }
-//
-//        TYPE_RIGHT_UP -> {
-//            path = Path().apply {
-//                moveTo(absoluteOffset.x + padding, absoluteOffset.y)
-//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y)
-//                lineTo(absoluteOffset.x + lengthWithPadding, absoluteOffset.y + padding)
-//                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + padding)
-//                lineTo(absoluteOffset.x + brickSize.toFloat(), absoluteOffset.y + lengthWithPadding)
-//                lineTo(absoluteOffset.x + padding, absoluteOffset.y + lengthWithPadding)
-//                lineTo(absoluteOffset.x + padding, absoluteOffset.y)
-//                close()
-//            }
-//        }
-//    }
-//
-//    when (type) {
-//        TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP -> {
-//            drawPath(path = path!!, color = color)
-//        }
-//
-//        else -> {
-//            drawRect(
-//                color = color,
-//                topLeft = topLeft!!,
-//                size = size!!,
-//                style = Fill
-//            )
-//        }
-//    }
-//}
-//
-//@Preview
-//@Composable
-//fun Preview() {
-//
-//    val mockBlock = listOf(
-//        Block(0, 0), Block(0, 1), Block(0, 2), Block(0, 3),
-//        Block(1, 0), Block(1, 1), Block(1, 2), Block(1, 3),
-//        Block(2, 0), Block(2, 1), Block(2, 2), Block(2, 3), Block(2, 4), Block(2, 5),
-//    )
-//    val mockType = listOf<PathBlockType>(
-//        TYPE_START_UP, TYPE_START_RIGHT, TYPE_START_DOWN, TYPE_START_LEFT,
-//        TYPE_UP_DEST, TYPE_RIGHT_DEST, TYPE_DOWN_DEST, TYPE_LEFT_DEST,
-//        TYPE_UP_LEFT, TYPE_LEFT_DOWN, TYPE_DOWN_RIGHT, TYPE_RIGHT_UP,
-//        TYPE_UP_DOWN, TYPE_LEFT_RIGHT
-//    )
-//    SearchEmulatorTheme {
-//        Canvas(modifier = Modifier.fillMaxSize()) {
-//            for (i in mockBlock.indices) {
-//                drawPathBlockFilled(
-//                    brickSize = 350,
-//                    x = mockBlock[i].x,
-//                    y = mockBlock[i].y,
-//                    type = mockType[i]
-//                )
-//                drawUnitBlockOutline(
-//                    brickSize = 350,
-//                    x = mockBlock[i].x,
-//                    y = mockBlock[i].y,
-//                    color = Color.Red
-//                )
-//            }
-//        }
-//    }
-//
-//}

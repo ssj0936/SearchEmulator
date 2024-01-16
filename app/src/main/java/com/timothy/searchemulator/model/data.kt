@@ -17,6 +17,9 @@ const val BOARD_SIZE_BASE = 18
 const val BOARD_SIZE_MULTIPLIER = 8
 const val BOARD_SIZE_STEP = 1
 
+//Speed Of final path animation
+const val MS_PER_PATH_BLOCK:Int = 20
+
 private fun powOf(base:Int, pow:Int):Float{
     var r = 1f
     repeat(pow){ r*=base}
