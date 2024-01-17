@@ -1,5 +1,6 @@
 package com.timothy.searchemulator.ui.emulator.compose
 
+import android.renderscript.Matrix2f
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
@@ -45,6 +47,7 @@ import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
 import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
+import com.timothy.searchemulator.ui.theme.color
 
 //Radio style control panel
 const val ID_BUTTON_START = 0
@@ -117,28 +120,32 @@ fun DrawingToolBar(
     modifier: Modifier = Modifier,
     status: Status,
     viewModel: EmulatorViewModel = hiltViewModel()
-){
+) {
     val enable = status == Status.Idle
+    val btnColor = MaterialTheme.color.buttonOutlineColors
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-    ){
+    ) {
         BasicOutlinedButton(
-            onClick = {viewModel.setEvent(Event.OnBarrierUndoButtonClicked)},
+            onClick = { viewModel.setEvent(Event.OnBarrierUndoButtonClicked) },
             iconId = R.drawable.baseline_undo_24,
-            enabled = enable
+            enabled = enable,
+            color = btnColor
         )
 
         BasicOutlinedButton(
-            onClick = {viewModel.setEvent(Event.OnBarrierClearButtonClicked)},
+            onClick = { viewModel.setEvent(Event.OnBarrierClearButtonClicked) },
             iconId = R.drawable.baseline_cleaning_services_24,
-            enabled = enable
+            enabled = enable,
+            color = btnColor
         )
 
         BasicOutlinedButton(
-            onClick = {viewModel.setEvent(Event.OnBarrierRedoButtonClicked)},
+            onClick = { viewModel.setEvent(Event.OnBarrierRedoButtonClicked) },
             iconId = R.drawable.baseline_redo_24,
-            enabled = enable
+            enabled = enable,
+            color = btnColor
         )
     }
 }
@@ -148,19 +155,25 @@ fun BasicOutlinedButton(
     onClick: () -> Unit,
     iconId: Int,
     borderStrokeWidth: Dp = 1.dp,
-    enabled: Boolean
+    enabled: Boolean,
+    color: Color
 ) {
     OutlinedButton(
         onClick = onClick,
         shape = CircleShape,
         enabled = enabled,
-        border = ButtonDefaults.outlinedButtonBorder.copy(width = borderStrokeWidth),
+        border = ButtonDefaults.outlinedButtonBorder.copy(
+            width = borderStrokeWidth,
+            brush = SolidColor(color)
+        ),
         contentPadding = PaddingValues(0.dp)
     ) {
         Icon(
             modifier = Modifier.size(16.dp),
             painter = painterResource(id = iconId),
-            contentDescription = null
+            contentDescription = null,
+            tint = color
+
         )
     }
 }
@@ -209,20 +222,20 @@ fun SegmentedButtons(
 
             val border = BorderStroke(
                 width = borderStrokeWidth,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(
+                color = if (selected) MaterialTheme.color.buttonOutlinePressedColors else MaterialTheme.color.buttonOutlineColors.copy(
                     alpha = .75f
                 )
             )
 
             val color = ButtonDefaults.outlinedButtonColors(
-                containerColor = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                disabledContainerColor = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                containerColor = if (selected) MaterialTheme.color.buttonOutlinePressedColors else Color.Transparent,
+                disabledContainerColor = if (selected) MaterialTheme.color.buttonOutlinePressedColors else Color.Transparent,
             )
 
             val contentColor = if (selected)
-                MaterialTheme.colorScheme.onPrimary.copy(alpha = if (enabled) 1f else .35f)
+                MaterialTheme.color.buttonOutlineContentPressedColors.copy(alpha = if (enabled) 1f else .35f)
             else
-                MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 1f else .35f)
+                MaterialTheme.color.buttonOutlineContentColors.copy(alpha = if (enabled) 1f else .35f)
 
             OutlinedButton(
                 modifier = buttonsModifier,
@@ -322,15 +335,16 @@ fun ControlPanelButton(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Image(
+            Icon(
                 imageVector = ImageVector.vectorResource(id = if (pressed) data.iconPressed else data.icon),
-                contentDescription = data.title
+                contentDescription = data.title,
+                tint = MaterialTheme.color.buttonColors
             )
 
             Text(
                 text = data.title,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
+                color = MaterialTheme.color.buttonColors,
             )
         }
     }

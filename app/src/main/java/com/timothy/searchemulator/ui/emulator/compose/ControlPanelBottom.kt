@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderColors
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,16 +28,18 @@ import com.timothy.searchemulator.model.getBoardSizeTick
 import com.timothy.searchemulator.model.getMovementSpeedTick
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
+import com.timothy.searchemulator.ui.theme.color
 import timber.log.Timber
 
 @Composable
 fun BottomControlPanel(
     modifier: Modifier = Modifier,
     viewModel: EmulatorViewModel = hiltViewModel(),
+    state:Contract.State
 ) {
     Column(modifier = modifier) {
         ValueSlideBar(
-            enabled = (viewModel.currentState.status == Contract.Status.Idle),
+            enabled = (state.status == Contract.Status.Idle),
             value = getBoardSizeTick(viewModel.currentState.minSideBlockCnt),
             title = "size",
             valueRange = BOARD_SIZE_MIN.toFloat()..BOARD_SIZE_MAX.toFloat(),
@@ -84,7 +88,12 @@ fun ValueSlideBar(
             onValueChange = {
                 sliderPosition = it
                 onValueChange(it)
-            }
+            },
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.color.sliderThumbColors,
+                activeTrackColor = MaterialTheme.color.sliderTrackColors,
+                inactiveTrackColor = MaterialTheme.color.sliderInactiveTrackColors
+            )
         )
     }
 }

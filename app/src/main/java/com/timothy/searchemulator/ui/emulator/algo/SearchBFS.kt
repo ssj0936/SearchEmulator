@@ -10,9 +10,9 @@ class SearchBFS : SearchStrategy() {
     private lateinit var queue: LinkedList<MutableList<Block>>
     private lateinit var visited: Array<BooleanArray>
 
-    companion object:SingletonSearchStrategy{
+    companion object : SingletonSearchStrategy {
         private val _instance by lazy { SearchBFS() }
-        override val instance:SearchStrategy
+        override val instance: SearchStrategy
             get() = _instance
     }
 
@@ -32,7 +32,7 @@ class SearchBFS : SearchStrategy() {
             this[start.first][start.second] = true
 
             barriers.forEach { (x, y) ->
-                if(isValid(x,y))
+                if (isValid(x, y))
                     this[x][y] = true
             }
         }
@@ -43,7 +43,7 @@ class SearchBFS : SearchStrategy() {
     override fun getType(): SearchAlgo = SearchAlgo.SEARCH_BFS
 
     override suspend fun search(
-        delayBetweenSteps : Long,
+        delayBetweenSteps: Long,
         onPause: () -> Unit,
         onProcess: (move: MovementType, block: Block) -> Unit,
         onFinish: (isFound: Boolean, path: List<Block>?) -> Unit
@@ -70,7 +70,7 @@ class SearchBFS : SearchStrategy() {
                     if (!isValidStep(nX, nY)) continue
 
                     visited[nX][nY] = true
-                    queue.offer(path.toMutableList().apply{add(Block(nX, nY))})
+                    queue.offer(path.toMutableList().apply { add(Block(nX, nY)) })
                 }
             } else {
                 onPause()
@@ -82,6 +82,6 @@ class SearchBFS : SearchStrategy() {
     }
 
     override fun isValidStep(x: BlockIndex, y: BlockIndex): Boolean {
-        return isValid(x,y) && !visited[x][y]
+        return isValid(x, y) && !visited[x][y]
     }
 }

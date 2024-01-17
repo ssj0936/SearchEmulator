@@ -102,6 +102,7 @@ fun BoardView(
             state = state,
             colorBackground = MaterialTheme.color.colorBlockBackground,
             colorPassed = MaterialTheme.color.colorBlockPassed,
+            colorCurrent = MaterialTheme.color.colorBlockTail,
             colorBarrier = MaterialTheme.color.colorBlockBarrier,
             colorStartPoint = MaterialTheme.color.colorBlockStart,
             colorDestPoint = MaterialTheme.color.colorBlockDest
@@ -120,6 +121,7 @@ fun BoardCanvas(
     state: Contract.State,
     colorBackground: Color,
     colorPassed: Color,
+    colorCurrent: Color,
     colorBarrier: Color,
     colorStartPoint: Color,
     colorDestPoint: Color,
@@ -130,7 +132,7 @@ fun BoardCanvas(
 
     Canvas(modifier = modifier) {
         drawBackground(blockSize, matrixW, matrixH, colorBackground)
-        drawPassedBlocks(state.passed, blockSize, colorPassed)
+        drawPassedBlocks(state.passed, blockSize, colorPassed, colorCurrent)
         drawBarrier(
             state.barrier.toList(),
             matrixW,
@@ -141,7 +143,6 @@ fun BoardCanvas(
         drawEndPoint(state.start, blockSize, colorStartPoint)
         drawEndPoint(state.dest, blockSize, colorDestPoint)
     }
-
 }
 
 @Composable
@@ -263,10 +264,11 @@ fun DrawScope.drawEndPoint(position: Block?, brickSize: Int, color: Color) {
     position?.let { drawUnitBlockFilled(brickSize, it.first, it.second, color) }
 }
 
-fun DrawScope.drawPassedBlocks(passed: List<Block>, brickSize: Int, color: Color) {
+fun DrawScope.drawPassedBlocks(passed: List<Block>, brickSize: Int, color: Color, currentColor:Color) {
     //draw passed
-    passed.forEach {
-        drawUnitBlockFilled(brickSize, it.first, it.second, color)
+    passed.forEachIndexed {i, block->
+
+        drawUnitBlockFilled(brickSize, block.x, block.y, if(i==passed.lastIndex) currentColor else color)
     }
 }
 
