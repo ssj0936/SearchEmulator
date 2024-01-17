@@ -48,6 +48,8 @@ import com.timothy.searchemulator.ui.emulator.x
 import com.timothy.searchemulator.ui.emulator.y
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import com.timothy.searchemulator.ui.theme.color
+import kotlinx.coroutines.CoroutineScope
+import kotlin.coroutines.coroutineContext
 
 @Composable
 fun BoardView(
@@ -107,10 +109,11 @@ fun BoardView(
             colorStartPoint = MaterialTheme.color.colorBlockStart,
             colorDestPoint = MaterialTheme.color.colorBlockDest
         )
+
         FinalPathCanvas(
             modifier = Modifier.fillMaxSize(),
             state = state,
-            pathColor = MaterialTheme.color.colorBlockPath
+            pathColor = MaterialTheme.color.colorBlockPath,
         )
     }
 }
@@ -149,8 +152,10 @@ fun BoardCanvas(
 fun FinalPathCanvas(
     modifier: Modifier = Modifier,
     state: Contract.State,
+    animationMsPerBlock:Int = MS_PER_PATH_BLOCK,
     pathColor: Color,
-    strokeWidth: Dp = 8.dp
+    strokeWidth: Dp = 8.dp,
+    onAnimationFinish:()->Unit = {}
 ) {
     if (state.path.isEmpty()) return
 
@@ -173,9 +178,11 @@ fun FinalPathCanvas(
     val currentIndexValue by animateIntAsState(
         targetValue = targetIndexValue,
         animationSpec = tween(
-            durationMillis = finalPath.size * MS_PER_PATH_BLOCK,
+            durationMillis = finalPath.size * animationMsPerBlock,
             easing = LinearEasing
-        ), label = ""
+        ),
+        label = "",
+        finishedListener = {onAnimationFinish()}
     )
     //animation Path
     Canvas(modifier = modifier) {

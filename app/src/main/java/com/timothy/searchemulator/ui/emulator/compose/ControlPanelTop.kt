@@ -3,16 +3,23 @@ package com.timothy.searchemulator.ui.emulator.compose
 import android.renderscript.Matrix2f
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,12 +29,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
@@ -46,19 +60,20 @@ import com.timothy.searchemulator.ui.emulator.Contract.Status
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
 import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
+import com.timothy.searchemulator.ui.theme.LocalSearchingColor
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import com.timothy.searchemulator.ui.theme.color
 
-//Radio style control panel
-const val ID_BUTTON_START = 0
-const val ID_BUTTON_PAUSE = 1
-const val ID_BUTTON_STOP = 2
+
+enum class ControlPanelButtonType {
+    TYPE_BUTTON, TYPE_SPACER
+}
 
 class ControlPanelButtonWrapper(
     val title: String,
     val icon: Int,
-    val iconPressed: Int,
-    val id: Int
+    val iconPressed: Int? = null,
+    val type: ControlPanelButtonType = ControlPanelButtonType.TYPE_BUTTON
 )
 
 val controlPanelButtonWrappers = listOf(
@@ -66,21 +81,32 @@ val controlPanelButtonWrappers = listOf(
         "Start",
         R.drawable.ic_play_24,
         R.drawable.ic_play_circle_pressed_24,
-        ID_BUTTON_START
     ),
     ControlPanelButtonWrapper(
         "Pause",
         R.drawable.ic_pause_24,
         R.drawable.ic_pause_circle_pressed_24,
-        ID_BUTTON_PAUSE
     ),
     ControlPanelButtonWrapper(
         "Stop",
         R.drawable.ic_stop_24,
         R.drawable.ic_stop_circle_pressed_24,
-        ID_BUTTON_STOP
+    ),
+
+    ControlPanelButtonWrapper(
+        "Undo",
+        R.drawable.baseline_undo_24
+    ),
+    ControlPanelButtonWrapper(
+        "Redo",
+        R.drawable.baseline_redo_24
+    ),
+    ControlPanelButtonWrapper(
+        "Clean",
+        R.drawable.baseline_cleaning_services_24
+    ),
+
     )
-)
 
 //search strategy single-choice buttons
 class ToggleButtonOption(
@@ -110,73 +136,37 @@ fun ControlPanel(
         ) {
             PlayStateControlPanel(status = state.status)
             SegmentedButtons(options = searchStrategyButtons, state = state)
-            DrawingToolBar(status = state.status)
         }
     }
 }
-
-@Composable
-fun DrawingToolBar(
-    modifier: Modifier = Modifier,
-    status: Status,
-    viewModel: EmulatorViewModel = hiltViewModel()
-) {
-    val enable = status == Status.Idle
-    val btnColor = MaterialTheme.color.buttonOutlineColors
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BasicOutlinedButton(
-            onClick = { viewModel.setEvent(Event.OnBarrierUndoButtonClicked) },
-            iconId = R.drawable.baseline_undo_24,
-            enabled = enable,
-            color = btnColor
-        )
-
-        BasicOutlinedButton(
-            onClick = { viewModel.setEvent(Event.OnBarrierClearButtonClicked) },
-            iconId = R.drawable.baseline_cleaning_services_24,
-            enabled = enable,
-            color = btnColor
-        )
-
-        BasicOutlinedButton(
-            onClick = { viewModel.setEvent(Event.OnBarrierRedoButtonClicked) },
-            iconId = R.drawable.baseline_redo_24,
-            enabled = enable,
-            color = btnColor
-        )
-    }
-}
-
-@Composable
-fun BasicOutlinedButton(
-    onClick: () -> Unit,
-    iconId: Int,
-    borderStrokeWidth: Dp = 1.dp,
-    enabled: Boolean,
-    color: Color
-) {
-    OutlinedButton(
-        onClick = onClick,
-        shape = CircleShape,
-        enabled = enabled,
-        border = ButtonDefaults.outlinedButtonBorder.copy(
-            width = borderStrokeWidth,
-            brush = SolidColor(color)
-        ),
-        contentPadding = PaddingValues(0.dp)
-    ) {
-        Icon(
-            modifier = Modifier.size(16.dp),
-            painter = painterResource(id = iconId),
-            contentDescription = null,
-            tint = color
-
-        )
-    }
-}
+//
+//@Composable
+//fun BasicOutlinedButton(
+//    onClick: () -> Unit,
+//    iconId: Int,
+//    borderStrokeWidth: Dp = 1.dp,
+//    enabled: Boolean,
+//    color: Color
+//) {
+//    OutlinedButton(
+//        onClick = onClick,
+//        shape = CircleShape,
+//        enabled = enabled,
+//        border = ButtonDefaults.outlinedButtonBorder.copy(
+//            width = borderStrokeWidth,
+//            brush = SolidColor(color)
+//        ),
+//        contentPadding = PaddingValues(0.dp)
+//    ) {
+//        Icon(
+//            modifier = Modifier.size(16.dp),
+//            painter = painterResource(id = iconId),
+//            contentDescription = null,
+//            tint = color
+//
+//        )
+//    }
+//}
 
 @Composable
 fun SegmentedButtons(
@@ -284,36 +274,93 @@ fun PlayStateControlPanel(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxWidth()
-            .padding(24.dp)
+            .padding(vertical = 18.dp)
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            modifier = Modifier.height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically,
+        ) {
 
+            val buttonModifier = Modifier.padding(horizontal = 4.dp)
+
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.Center
             ) {
-            //start
-            ControlPanelButton(
-                data = controlPanelButtonWrappers[0],
-                enabled = (status == Status.Idle) || (status == Status.Paused),
-                pressed = status == Status.Started,
-                onClick = { viewModel.setEvent(Event.OnSearchBtnClick) }
-            )
+                //start
+                ControlPanelButton(
+                    modifier = buttonModifier,
+                    data = controlPanelButtonWrappers[0],
+                    enabled = (status == Status.Idle) || (status == Status.Paused),
+                    pressed = status == Status.Started,
+                    onClick = { viewModel.setEvent(Event.OnSearchBtnClick) }
+                )
 
-            //pause
-            ControlPanelButton(
-                data = controlPanelButtonWrappers[1],
-                enabled = status == Status.Started,
-                pressed = status == Status.Idle,
-                onClick = { viewModel.setEvent(Event.OnPauseBtnClick) }
-            )
+                //pause
+                ControlPanelButton(
+                    modifier = buttonModifier,
+                    data = controlPanelButtonWrappers[1],
+                    enabled = status == Status.Started,
+                    pressed = status == Status.Idle,
+                    onClick = { viewModel.setEvent(Event.OnPauseBtnClick) }
+                )
 
-            //stop
-            ControlPanelButton(
-                data = controlPanelButtonWrappers[2],
-                enabled = (status == Status.Started) || (status == Status.SearchFinish) || (status == Status.Paused),
-                pressed = false,
-                onClick = { viewModel.setEvent(Event.OnResetBtnClick) }
-            )
+                //stop
+                ControlPanelButton(
+                    modifier = buttonModifier,
+                    data = controlPanelButtonWrappers[2],
+                    enabled = (status == Status.Started) || (status == Status.SearchFinish) || (status == Status.Paused),
+                    pressed = false,
+                    onClick = { viewModel.setEvent(Event.OnResetBtnClick) }
+                )
+            }
+
+            with(MaterialTheme.color.buttonContentColors) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                        .size(4.dp)
+                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                        .drawWithContent {
+                            drawContent()
+                            drawCircle(
+                                color = this@with,
+                                radius = (4 / 2).dp.toPx()
+                            )
+                        }
+                )
+            }
+
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                //undo
+                ControlPanelButton(
+                    modifier = buttonModifier,
+                    data = controlPanelButtonWrappers[3],
+                    enabled = (status == Status.Idle),
+                    pressed = false,
+                    onClick = { viewModel.setEvent(Event.OnBarrierUndoButtonClicked) }
+                )
+
+                //redo
+                ControlPanelButton(
+                    modifier = buttonModifier,
+                    data = controlPanelButtonWrappers[4],
+                    enabled = (status == Status.Idle),
+                    pressed = false,
+                    onClick = { viewModel.setEvent(Event.OnBarrierRedoButtonClicked) }
+                )
+
+                //clean
+                ControlPanelButton(
+                    modifier = buttonModifier,
+                    data = controlPanelButtonWrappers[5],
+                    enabled = (status == Status.Idle),
+                    pressed = false,
+                    onClick = { viewModel.setEvent(Event.OnBarrierClearButtonClicked) }
+                )
+            }
         }
     }
 }
@@ -324,27 +371,42 @@ fun ControlPanelButton(
     data: ControlPanelButtonWrapper,
     pressed: Boolean = false,
     enabled: Boolean = true,
-    onClick: () -> Unit
+    onClick: () -> Unit = {}
 ) {
-    Box(
-        modifier = modifier
-            .alpha(if (enabled) 1f else .7f)
-            .clickable(enabled, onClick = onClick)
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = ImageVector.vectorResource(id = if (pressed) data.iconPressed else data.icon),
-                contentDescription = data.title,
-                tint = MaterialTheme.color.buttonColors
-            )
+    when (data.type) {
+        ControlPanelButtonType.TYPE_BUTTON -> {
+            Box(
+                modifier = modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .alpha(if (enabled) 1f else .5f)
+                    .clickable(enabled, onClick = onClick)
+                    .padding(horizontal = 4.dp, vertical = 8.dp)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = if (data.iconPressed == null || !pressed) data.icon else data.iconPressed),
+                        contentDescription = data.title,
+                        tint = MaterialTheme.color.buttonColors
+                    )
+                    Text(
+                        text = data.title,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.color.buttonColors,
+                    )
+                }
+            }
+        }
 
-            Text(
-                text = data.title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.color.buttonColors,
+        ControlPanelButtonType.TYPE_SPACER -> {
+            Spacer(
+                modifier = Modifier
+                    .background(MaterialTheme.color.buttonColors)
+                    .width(2.dp)
+                    .padding(top = 3.dp, bottom = 3.dp)
+                    .fillMaxHeight()
             )
         }
     }
