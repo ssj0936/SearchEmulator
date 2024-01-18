@@ -1,12 +1,10 @@
 package com.timothy.searchemulator.ui.emulator.compose
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +27,6 @@ import com.timothy.searchemulator.model.getMovementSpeedTick
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.theme.color
-import timber.log.Timber
 
 @Composable
 fun BottomControlPanel(
@@ -37,8 +34,9 @@ fun BottomControlPanel(
     viewModel: EmulatorViewModel = hiltViewModel(),
     state:Contract.State
 ) {
-    Column(modifier = modifier) {
+    Row(modifier = modifier) {
         ValueSlideBar(
+            modifier = Modifier.weight(1f),
             enabled = (state.status == Contract.Status.Idle),
             value = getBoardSizeTick(viewModel.currentState.minSideBlockCnt),
             title = "size",
@@ -48,6 +46,7 @@ fun BottomControlPanel(
         )
 
         ValueSlideBar(
+            modifier = Modifier.weight(1f),
             value = getMovementSpeedTick(viewModel.currentState.searchProcessDelay),
             title = "speed",
             valueRange = MOVEMENT_SPEED_MIN.toFloat()..MOVEMENT_SPEED_MAX.toFloat(),
