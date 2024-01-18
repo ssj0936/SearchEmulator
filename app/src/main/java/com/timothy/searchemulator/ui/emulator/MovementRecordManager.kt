@@ -25,7 +25,7 @@ interface MovementRecordManager{
 
     fun undoLastMovement():Movement?
     fun redoLastMovement():Movement?
-
+    
     fun getCurrentMovement():MutableList<Block>
     fun startRecording(type: MovementType):MovementRecordManager
     fun record(block:Block):MovementRecordManager
@@ -121,6 +121,8 @@ class MovementRecordManagerImpl @Inject constructor():MovementRecordManager {
                     }
                 }
             )
+
+            barrierDrawingRedoBuffer.clear()
         }
         return this
     }
