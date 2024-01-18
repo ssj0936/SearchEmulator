@@ -7,6 +7,10 @@ enum class MovementType{
     MOVE_START, MOVE_DEST, DRAWING_BARRIER
 }
 
+enum class EditType{
+    EDIT_NORMAL, EDIT_UNDO, EDIT_REDO
+}
+
 sealed class Movement{
     data class MoveStart(val from:Block? = null, val to:Block):Movement()
     data class MoveDest(val from:Block, val to:Block):Movement()
@@ -25,7 +29,7 @@ interface MovementRecordManager{
 
     fun undoLastMovement():Movement?
     fun redoLastMovement():Movement?
-    
+
     fun getCurrentMovement():MutableList<Block>
     fun startRecording(type: MovementType):MovementRecordManager
     fun record(block:Block):MovementRecordManager

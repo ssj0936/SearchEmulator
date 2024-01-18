@@ -218,8 +218,8 @@ class EmulatorViewModel @Inject constructor(
 
     private fun onBarrierUndoButtonClicked() {
         if(!movementRecordManager.hasUndoMovement()) return
-
-        when(val movement = movementRecordManager.undoLastMovement()){
+        val movement = movementRecordManager.undoLastMovement()?:return
+        when(movement){
             is Movement.MoveStart->{
                 setState { copy(start = movement.from) }
             }
@@ -238,12 +238,14 @@ class EmulatorViewModel @Inject constructor(
             }
             else -> {/*throw IllegalStateException("no movement to undo")*/}
         }
+        setEffect(Effect.OnUndoEvent(movement = movement))
+
     }
 
     private fun onBarrierRedoButtonClicked() {
         if(!movementRecordManager.hasRedoMovement()) return
-
-        when(val movement = movementRecordManager.redoLastMovement()){
+        val movement = movementRecordManager.redoLastMovement()?:return
+        when(movement){
             is Movement.MoveStart->{
                 setState { copy(start = movement.to) }
             }
@@ -262,6 +264,8 @@ class EmulatorViewModel @Inject constructor(
             }
             else -> {/*throw IllegalStateException("no movement to redo")*/}
         }
+        setEffect(Effect.OnRedoEvent(movement = movement))
+
     }
 
     private val Block.isValidBlock: Boolean

@@ -1,7 +1,9 @@
 package com.timothy.searchemulator.ui.emulator.compose
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -43,13 +45,13 @@ import com.timothy.searchemulator.ui.base.toBlock
 import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
+import com.timothy.searchemulator.ui.emulator.Movement
 import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
 import com.timothy.searchemulator.ui.emulator.x
 import com.timothy.searchemulator.ui.emulator.y
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import com.timothy.searchemulator.ui.theme.color
-import kotlinx.coroutines.CoroutineScope
-import kotlin.coroutines.coroutineContext
+import timber.log.Timber
 
 @Composable
 fun BoardView(
@@ -128,12 +130,71 @@ fun BoardCanvas(
     colorBarrier: Color,
     colorStartPoint: Color,
     colorDestPoint: Color,
+    viewModel: EmulatorViewModel = hiltViewModel()
 ) {
     val blockSize = state.blockSize
     val matrixW = state.matrixW
     val matrixH = state.matrixH
 
+    var startBlock by remember{ mutableStateOf(state.start) }
+    var isMoveStartAnimationNeed by remember {mutableStateOf(false)}
+    var destBlock by remember{ mutableStateOf(state.dest) }
+    var isMoveDestAnimationNeed by remember {mutableStateOf(false)}
+
+    val currentStartOffset by animateOffsetAsState(
+        targetValue = Offset(blockSize * startBlock!!.x.toFloat(), blockSize * startBlock!!.y.toFloat()),
+        animationSpec = tween(
+            durationMillis = 200,
+            easing = LinearOutSlowInEasing
+        ),
+        label = "",
+        finishedListener = {isMoveStartAnimationNeed = false}
+    )
+
+    val currentDestOffset by animateOffsetAsState(
+        targetValue = destBlock?.let{Offset(blockSize * it.x.toFloat(), blockSize * it.y.toFloat())} ?: Offset(-1f,-1f),
+        animationSpec = tween(
+            durationMillis = 200,
+            easing = LinearOutSlowInEasing
+        ),
+        label = "",
+        finishedListener = {isMoveDestAnimationNeed = false}
+    )
+    startBlock = state.start
+    destBlock = state.dest
+
+    LaunchedEffect(key1 = Unit){
+        Timber.d("LaunchedEffect")
+        viewModel.effect.collect{effect->
+            when(effect){
+//                is Contract.Effect.OnStartPosChange->{
+//                    startBlock = effect.block
+//                }
+                is Contract.Effect.OnUndoEvent->{
+                    when(effect.movement){
+                        is Movement.MoveStart->{
+                            isMoveStartAnimationNeed = true
+//                            startBlock = effect.movement.from
+                        }
+                        is Movement.MoveDest->{
+                            isMoveStartAnimationNeed = true
+//                            startBlock = effect.movement.to
+                        }
+                        else->{}
+                    }
+                }
+                is  Contract.Effect.OnRedoEvent->{
+
+                }
+
+                else->{}
+            }
+            Timber.d(effect.toString())
+        }
+    }
+
     Canvas(modifier = modifier) {
+
         drawBackground(blockSize, matrixW, matrixH, colorBackground)
         drawPassedBlocks(state.passed, blockSize, colorPassed, colorCurrent)
         drawBarrier(
@@ -143,7 +204,12 @@ fun BoardCanvas(
             blockSize,
             colorBarrier
         )
-        drawEndPoint(state.start, blockSize, colorStartPoint)
+
+        if(isMoveStartAnimationNeed){
+            drawEndPointAnimated(currentStartOffset, blockSize, colorStartPoint)
+        }else{
+            drawEndPoint(startBlock, blockSize, colorStartPoint)
+        }
         drawEndPoint(state.dest, blockSize, colorDestPoint)
     }
 }
@@ -271,6 +337,10 @@ fun DrawScope.drawEndPoint(position: Block?, brickSize: Int, color: Color) {
     position?.let { drawUnitBlockFilled(brickSize, it.first, it.second, color) }
 }
 
+fun DrawScope.drawEndPointAnimated(offset: Offset, brickSize: Int, color: Color) {
+    drawUnitBlockFilledFromOffset(brickSize, offset, color)
+}
+
 fun DrawScope.drawPassedBlocks(passed: List<Block>, brickSize: Int, color: Color, currentColor:Color) {
     //draw passed
     passed.forEachIndexed {i, block->
@@ -325,14 +395,30 @@ fun DrawScope.drawUnitBlockFilled(
     )
 }
 
+fun DrawScope.drawUnitBlockFilledFromOffset(
+    brickSize: Int, offset: Offset,
+    color: Color = Color.Black
+) {
+    val padding = brickSize * 0.05f
+    val outerSize = brickSize - padding * 2
+
+    drawRect(
+        color = color,
+        topLeft = offset + Offset(padding, padding),
+        size = Size(outerSize, outerSize),
+        style = Fill
+    )
+}
+
+
 @Preview
 @Composable
 fun PreviewBoard(){
     SearchEmulatorTheme {
         BoardView(
             modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
             state = Contract.State(
                 status = Contract.Status.Idle,
                 minSideBlockCnt = 18,

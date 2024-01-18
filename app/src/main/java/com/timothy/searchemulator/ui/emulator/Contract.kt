@@ -62,7 +62,7 @@ class Contract{
         val path:List<Block> = emptyList(),
 
         //animation
-        val searchProcessDelay:Long
+        val searchProcessDelay:Long,
     ):BaseState
 
     interface DrawingType
@@ -81,6 +81,9 @@ class Contract{
 
     sealed class Effect:BaseEffect{
         data class OnSearchFinish(val isSuccess:Boolean):Effect()
+//        data class OnStartPosChange(val block:Block):Effect()
+        data class OnUndoEvent(val movement:Movement):Effect()
+        data class OnRedoEvent(val movement:Movement):Effect()
         object OnBarrierCleaned:Effect()
     }
 

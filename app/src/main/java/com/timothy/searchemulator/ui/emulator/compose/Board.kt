@@ -29,9 +29,7 @@ import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import androidx.compose.runtime.rememberCoroutineScope as rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +43,7 @@ fun EmulatorPage(
 
     LaunchedEffect(key1 =Unit){
         viewModel.effect.collect{effect->
-            effectHandle(effect, scope, snackbarHostState)
+            snackBarEffectHandle(effect, scope, snackbarHostState)
         }
     }
 
@@ -91,19 +89,17 @@ fun EmulatorPage(
     }
 }
 
-fun effectHandle(
+fun snackBarEffectHandle(
     effect: Contract.Effect,
     scope:CoroutineScope,
     snackbarHostState:SnackbarHostState
-) = when(effect){
-    is Contract.Effect.OnSearchFinish ->{
+){
+    if(effect is Contract.Effect.OnSearchFinish){
         val isSuccess = effect.isSuccess
         scope.launch {
             snackbarHostState.showSnackbar(if(isSuccess) "found path" else "path not found")
         }
-    }
-
-    is Contract.Effect.OnBarrierCleaned->{
+    }else if(effect is Contract.Effect.OnBarrierCleaned){
         scope.launch {
             snackbarHostState.showSnackbar("Barrier cleaned")
         }
