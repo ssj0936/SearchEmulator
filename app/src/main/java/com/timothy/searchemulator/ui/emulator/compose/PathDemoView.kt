@@ -1,7 +1,10 @@
 package com.timothy.searchemulator.ui.emulator.compose
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
@@ -17,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -136,58 +140,142 @@ fun BoardCanvas(
     val matrixW = state.matrixW
     val matrixH = state.matrixH
 
-    var startBlock by remember{ mutableStateOf(state.start) }
-    var isMoveStartAnimationNeed by remember {mutableStateOf(false)}
-    var destBlock by remember{ mutableStateOf(state.dest) }
-    var isMoveDestAnimationNeed by remember {mutableStateOf(false)}
+    var startBlock by remember { mutableStateOf(state.start) }
+    var isMoveStartAnimationNeed by remember { mutableStateOf(false) }
+    var destBlock by remember { mutableStateOf(state.dest) }
+    var isMoveDestAnimationNeed by remember { mutableStateOf(false) }
+    var barrierBlocks by remember { mutableStateOf(state.barrier.toSet()) }
+    var barrierBlocksDiffShow by remember { mutableStateOf(emptyList<Block>()) }
+    var barrierBlocksDiffHide by remember { mutableStateOf(emptyList<Block>()) }
+    var isBarrierAnimationNeed by remember { mutableStateOf(false) }
+//    var barrierAlphaTargetValue by remember { mutableFloatStateOf(0f) }
+
+    val animAlpha = remember { Animatable(0f) }
 
     val currentStartOffset by animateOffsetAsState(
-        targetValue = Offset(blockSize * startBlock!!.x.toFloat(), blockSize * startBlock!!.y.toFloat()),
+        targetValue = Offset(
+            blockSize * startBlock!!.x.toFloat(),
+            blockSize * startBlock!!.y.toFloat()
+        ),
         animationSpec = tween(
             durationMillis = 200,
             easing = LinearOutSlowInEasing
         ),
         label = "",
-        finishedListener = {isMoveStartAnimationNeed = false}
+        finishedListener = { isMoveStartAnimationNeed = false }
     )
 
     val currentDestOffset by animateOffsetAsState(
-        targetValue = destBlock?.let{Offset(blockSize * it.x.toFloat(), blockSize * it.y.toFloat())} ?: Offset(-1f,-1f),
+        targetValue = destBlock?.let {
+            Offset(
+                blockSize * it.x.toFloat(),
+                blockSize * it.y.toFloat()
+            )
+        } ?: Offset(-1f, -1f),
         animationSpec = tween(
             durationMillis = 200,
             easing = LinearOutSlowInEasing
         ),
         label = "",
-        finishedListener = {isMoveDestAnimationNeed = false}
+        finishedListener = { isMoveDestAnimationNeed = false }
     )
+
     startBlock = state.start
     destBlock = state.dest
+//    barrierBlocks = state.barrier
 
-    LaunchedEffect(key1 = Unit){
-        Timber.d("LaunchedEffect")
-        viewModel.effect.collect{effect->
-            when(effect){
-//                is Contract.Effect.OnStartPosChange->{
-//                    startBlock = effect.block
-//                }
-                is Contract.Effect.OnUndoEvent->{
-                    when(effect.movement){
-                        is Movement.MoveStart->{
+    LaunchedEffect(key1 = Unit) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is Contract.Effect.OnUndoEvent -> {
+                    when (effect.movement) {
+                        is Movement.MoveStart -> {
                             isMoveStartAnimationNeed = true
-//                            startBlock = effect.movement.from
                         }
-                        is Movement.MoveDest->{
-                            isMoveStartAnimationNeed = true
-//                            startBlock = effect.movement.to
+
+                        is Movement.MoveDest -> {
+                            isMoveDestAnimationNeed = true
                         }
-                        else->{}
+
+                        is Movement.DrawBarrier->{
+                            isBarrierAnimationNeed = true
+
+                            val tmp = viewModel.currentState.barrier.toHashSet()
+                            animAlpha.snapTo(0f)
+                            val moves = effect.movement.drawPath
+                            val needToShow = mutableListOf<Block>()
+                            val needToHide = mutableListOf<Block>()
+                            val others = viewModel.currentState.barrier.toHashSet()
+                            moves.forEach {
+                                if(others.contains(it))
+                                    needToShow.add(it)
+                                else
+                                    needToHide.add(it)
+                                others.remove(it)
+                            }
+                            barrierBlocksDiffShow = needToShow
+                            barrierBlocksDiffHide = needToHide
+                            barrierBlocks = others
+
+//                            barrierAlphaTargetValue = 1f
+                            animAlpha.animateTo(
+                                targetValue = 1f,
+                                animationSpec = tween(
+                                    durationMillis = 400,
+                                    easing = LinearOutSlowInEasing
+                                )
+                            )
+                            barrierBlocks = tmp
+                            isBarrierAnimationNeed = false
+                        }
                     }
                 }
-                is  Contract.Effect.OnRedoEvent->{
 
+                is Contract.Effect.OnRedoEvent -> {
+                    when (effect.movement) {
+                        is Movement.MoveStart -> {
+                            isMoveStartAnimationNeed = true
+                        }
+
+                        is Movement.MoveDest -> {
+                            isMoveDestAnimationNeed = true
+                        }
+
+                        is Movement.DrawBarrier->{
+                            isBarrierAnimationNeed = true
+
+                            val tmp = viewModel.currentState.barrier.toHashSet()
+                            animAlpha.snapTo(0f)
+                            val moves = effect.movement.drawPath
+                            val needToShow = mutableListOf<Block>()
+                            val needToHide = mutableListOf<Block>()
+                            val others = viewModel.currentState.barrier.toHashSet()
+                            moves.forEach {
+                                if(others.contains(it))
+                                    needToShow.add(it)
+                                else
+                                    needToHide.add(it)
+                                others.remove(it)
+                            }
+                            barrierBlocksDiffShow = needToShow
+                            barrierBlocksDiffHide = needToHide
+                            barrierBlocks = others
+
+//                            barrierAlphaTargetValue = 1f
+                            animAlpha.animateTo(
+                                targetValue = 1f,
+                                animationSpec = tween(
+                                    durationMillis = 400,
+                                    easing = LinearOutSlowInEasing
+                                )
+                            )
+                            barrierBlocks = tmp
+                            isBarrierAnimationNeed = false
+                        }
+                    }
                 }
 
-                else->{}
+                else -> {}
             }
             Timber.d(effect.toString())
         }
@@ -197,20 +285,38 @@ fun BoardCanvas(
 
         drawBackground(blockSize, matrixW, matrixH, colorBackground)
         drawPassedBlocks(state.passed, blockSize, colorPassed, colorCurrent)
-        drawBarrier(
-            state.barrier.toList(),
-            matrixW,
-            matrixH,
-            blockSize,
-            colorBarrier
-        )
+        if(isBarrierAnimationNeed){
+            drawBarrierWithAnimation(
+                barrierBlocks.toList(),
+                barrierShow = barrierBlocksDiffShow,
+                barrierHide = barrierBlocksDiffHide,
+                matrixW,
+                matrixH,
+                blockSize,
+                colorBarrier,
+                bias = animAlpha.value
+            )
+        }else {
+            drawBarrier(
+                state.barrier.toList(),
+                matrixW,
+                matrixH,
+                blockSize,
+                colorBarrier
+            )
+        }
 
-        if(isMoveStartAnimationNeed){
+        if (isMoveStartAnimationNeed) {
             drawEndPointAnimated(currentStartOffset, blockSize, colorStartPoint)
-        }else{
+        } else {
             drawEndPoint(startBlock, blockSize, colorStartPoint)
         }
-        drawEndPoint(state.dest, blockSize, colorDestPoint)
+
+        if (isMoveDestAnimationNeed) {
+            drawEndPointAnimated(currentDestOffset, blockSize, colorDestPoint)
+        } else {
+            drawEndPoint(state.dest, blockSize, colorDestPoint)
+        }
     }
 }
 
@@ -218,10 +324,10 @@ fun BoardCanvas(
 fun FinalPathCanvas(
     modifier: Modifier = Modifier,
     state: Contract.State,
-    animationMsPerBlock:Int = MS_PER_PATH_BLOCK,
+    animationMsPerBlock: Int = MS_PER_PATH_BLOCK,
     pathColor: Color,
     strokeWidth: Dp = 8.dp,
-    onAnimationFinish:()->Unit = {}
+    onAnimationFinish: () -> Unit = {}
 ) {
     if (state.path.isEmpty()) return
 
@@ -248,7 +354,7 @@ fun FinalPathCanvas(
             easing = LinearEasing
         ),
         label = "",
-        finishedListener = {onAnimationFinish()}
+        finishedListener = { onAnimationFinish() }
     )
     //animation Path
     Canvas(modifier = modifier) {
@@ -341,11 +447,64 @@ fun DrawScope.drawEndPointAnimated(offset: Offset, brickSize: Int, color: Color)
     drawUnitBlockFilledFromOffset(brickSize, offset, color)
 }
 
-fun DrawScope.drawPassedBlocks(passed: List<Block>, brickSize: Int, color: Color, currentColor:Color) {
+fun DrawScope.drawPassedBlocks(
+    passed: List<Block>,
+    brickSize: Int,
+    color: Color,
+    currentColor: Color
+) {
     //draw passed
-    passed.forEachIndexed {i, block->
+    passed.forEachIndexed { i, block ->
 
-        drawUnitBlockFilled(brickSize, block.x, block.y, if(i==passed.lastIndex) currentColor else color)
+        drawUnitBlockFilled(
+            brickSize,
+            block.x,
+            block.y,
+            if (i == passed.lastIndex) currentColor else color
+        )
+    }
+}
+
+fun DrawScope.drawBarrierWithAnimation(
+    barrier: List<Block>,
+    barrierShow: List<Block>,
+    barrierHide: List<Block>,
+    matrixW: Int,
+    matrixH: Int,
+    brickSize: Int,
+    color: Color,
+    bias : Float
+) {
+    //draw passed
+    barrier.forEach {
+        if (it.first in 0 until matrixW && it.second in 0 until matrixH)
+            drawUnitBlockFilled(brickSize, it.first, it.second, color)
+    }
+
+    barrierShow.forEach {block->
+        val absoluteOffset = Offset(brickSize * block.x.toFloat(), brickSize * block.y.toFloat())
+        val padding = brickSize * 0.05f
+        val outerSize = brickSize - padding * 2
+
+        drawRect(
+            color = color.copy(alpha = bias),
+            topLeft = absoluteOffset + Offset(padding, padding),
+            size = Size(outerSize, outerSize),
+            style = Fill
+        )
+    }
+
+    barrierHide.forEach {block->
+        val absoluteOffset = Offset(brickSize * block.x.toFloat(), brickSize * block.y.toFloat())
+        val padding = brickSize * 0.05f
+        val outerSize = brickSize - padding * 2
+
+        drawRect(
+            color = color.copy(alpha = 1 - bias),
+            topLeft = absoluteOffset + Offset(padding, padding),
+            size = Size(outerSize, outerSize),
+            style = Fill
+        )
     }
 }
 
@@ -395,6 +554,25 @@ fun DrawScope.drawUnitBlockFilled(
     )
 }
 
+fun DrawScope.drawUnitBlockFilled(
+    brickSize: Int, x: Int, y: Int,
+    color: Color = Color.Black,
+    bias: Float
+) {
+    val absoluteOffset = Offset(brickSize * x.toFloat(), bias + brickSize * y.toFloat())
+    val padding = brickSize * 0.05f
+    val outerSize = brickSize - padding * 2
+
+    drawRect(
+        color = color.copy(alpha = 1 - bias),
+        topLeft = absoluteOffset + Offset(padding, padding),
+        size = Size(outerSize, outerSize),
+        style = Fill
+    )
+
+
+}
+
 fun DrawScope.drawUnitBlockFilledFromOffset(
     brickSize: Int, offset: Offset,
     color: Color = Color.Black
@@ -413,7 +591,7 @@ fun DrawScope.drawUnitBlockFilledFromOffset(
 
 @Preview
 @Composable
-fun PreviewBoard(){
+fun PreviewBoard() {
     SearchEmulatorTheme {
         BoardView(
             modifier = Modifier
@@ -424,11 +602,290 @@ fun PreviewBoard(){
                 minSideBlockCnt = 18,
                 start = Block(14, 11),
                 dest = Block(13, 23),
-                barrier = hashSetOf(Block(4, 4), Block(8, 9), Block(12, 14), Block(12, 15), Block(16, 19), Block(16, 20), Block(4, 9), Block(8, 14), Block(12, 18), Block(0, 9), Block(8, 18), Block(4, 15), Block(4, 18), Block(17, 6), Block(17, 7), Block(13, 7), Block(9, 3), Block(13, 9), Block(17, 14), Block(9, 7), Block(5, 4), Block(9, 9), Block(13, 14), Block(1, 4), Block(5, 9), Block(9, 14), Block(13, 18), Block(1, 9), Block(1, 10), Block(5, 14), Block(9, 18), Block(5, 15), Block(5, 18), Block(5, 21), Block(5, 22), Block(5, 23), Block(5, 24), Block(5, 25), Block(14, 7), Block(10, 3), Block(10, 7), Block(6, 4), Block(10, 9), Block(14, 14), Block(6, 6), Block(2, 3), Block(6, 9), Block(10, 14), Block(14, 18), Block(6, 10), Block(10, 15), Block(14, 19), Block(6, 11), Block(6, 12), Block(2, 9), Block(6, 14), Block(10, 18), Block(10, 20), Block(10, 21), Block(6, 18), Block(10, 22), Block(15, 7), Block(11, 3), Block(11, 7), Block(7, 3), Block(7, 4), Block(11, 9), Block(15, 14), Block(7, 7), Block(3, 3), Block(3, 4), Block(7, 9), Block(11, 15), Block(15, 19), Block(3, 9), Block(7, 14), Block(11, 18), Block(11, 19), Block(11, 20), Block(7, 18), Block(3, 15), Block(3, 16), Block(3, 17), Block(16, 7), Block(12, 7), Block(8, 3), Block(12, 9), Block(16, 14), Block(8, 7)),
+                barrier = hashSetOf(
+                    Block(4, 4),
+                    Block(8, 9),
+                    Block(12, 14),
+                    Block(12, 15),
+                    Block(16, 19),
+                    Block(16, 20),
+                    Block(4, 9),
+                    Block(8, 14),
+                    Block(12, 18),
+                    Block(0, 9),
+                    Block(8, 18),
+                    Block(4, 15),
+                    Block(4, 18),
+                    Block(17, 6),
+                    Block(17, 7),
+                    Block(13, 7),
+                    Block(9, 3),
+                    Block(13, 9),
+                    Block(17, 14),
+                    Block(9, 7),
+                    Block(5, 4),
+                    Block(9, 9),
+                    Block(13, 14),
+                    Block(1, 4),
+                    Block(5, 9),
+                    Block(9, 14),
+                    Block(13, 18),
+                    Block(1, 9),
+                    Block(1, 10),
+                    Block(5, 14),
+                    Block(9, 18),
+                    Block(5, 15),
+                    Block(5, 18),
+                    Block(5, 21),
+                    Block(5, 22),
+                    Block(5, 23),
+                    Block(5, 24),
+                    Block(5, 25),
+                    Block(14, 7),
+                    Block(10, 3),
+                    Block(10, 7),
+                    Block(6, 4),
+                    Block(10, 9),
+                    Block(14, 14),
+                    Block(6, 6),
+                    Block(2, 3),
+                    Block(6, 9),
+                    Block(10, 14),
+                    Block(14, 18),
+                    Block(6, 10),
+                    Block(10, 15),
+                    Block(14, 19),
+                    Block(6, 11),
+                    Block(6, 12),
+                    Block(2, 9),
+                    Block(6, 14),
+                    Block(10, 18),
+                    Block(10, 20),
+                    Block(10, 21),
+                    Block(6, 18),
+                    Block(10, 22),
+                    Block(15, 7),
+                    Block(11, 3),
+                    Block(11, 7),
+                    Block(7, 3),
+                    Block(7, 4),
+                    Block(11, 9),
+                    Block(15, 14),
+                    Block(7, 7),
+                    Block(3, 3),
+                    Block(3, 4),
+                    Block(7, 9),
+                    Block(11, 15),
+                    Block(15, 19),
+                    Block(3, 9),
+                    Block(7, 14),
+                    Block(11, 18),
+                    Block(11, 19),
+                    Block(11, 20),
+                    Block(7, 18),
+                    Block(3, 15),
+                    Block(3, 16),
+                    Block(3, 17),
+                    Block(16, 7),
+                    Block(12, 7),
+                    Block(8, 3),
+                    Block(12, 9),
+                    Block(16, 14),
+                    Block(8, 7)
+                ),
                 searchStrategy = SearchBFS.instance,
                 searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat()),
-                path = listOf(Block(14, 11), Block(13, 11), Block(12, 11), Block(11, 11), Block(10, 11), Block(9, 11), Block(8, 11), Block(7, 11), Block(7, 12), Block(7, 13), Block(6, 13), Block(5, 13), Block(4, 13), Block(3, 13), Block(2, 13), Block(1, 13), Block(0, 13), Block(0, 14), Block(0, 15), Block(0, 16), Block(0, 17), Block(0, 18), Block(0, 19), Block(0, 20), Block(0, 21), Block(0, 22), Block(0, 23), Block(0, 24), Block(0, 25), Block(1, 25), Block(2, 25), Block(3, 25), Block(4, 25), Block(4, 24), Block(3, 24), Block(2, 24), Block(1, 24), Block(1, 23), Block(2, 23), Block(3, 23), Block(4, 23), Block(4, 22), Block(3, 22), Block(2, 22), Block(1, 22), Block(1, 21), Block(2, 21), Block(3, 21), Block(4, 21), Block(4, 20), Block(3, 20), Block(2, 20), Block(1, 20), Block(1, 19), Block(2, 19), Block(3, 19), Block(4, 19), Block(5, 19), Block(5, 20), Block(6, 20), Block(6, 21), Block(6, 22), Block(6, 23), Block(6, 24), Block(6, 25), Block(7, 25), Block(8, 25), Block(9, 25), Block(10, 25), Block(11, 25), Block(12, 25), Block(13, 25), Block(14, 25), Block(15, 25), Block(16, 25), Block(17, 25), Block(17, 24), Block(16, 24), Block(15, 24), Block(14, 24), Block(13, 24), Block(12, 24), Block(11, 24), Block(10, 24), Block(9, 24), Block(8, 24), Block(7, 24), Block(7, 23), Block(8, 23), Block(9, 23), Block(10, 23), Block(11, 23), Block(12, 23), Block(13, 23)),
-                passed = listOf(Block(14, 11), Block(13, 11), Block(12, 11), Block(11, 11), Block(10, 11), Block(9, 11), Block(8, 11), Block(7, 11), Block(7, 12), Block(7, 13), Block(6, 13), Block(5, 13), Block(4, 13), Block(3, 13), Block(2, 13), Block(1, 13), Block(0, 13), Block(0, 14), Block(0, 15), Block(0, 16), Block(0, 17), Block(0, 18), Block(0, 19), Block(0, 20), Block(0, 21), Block(0, 22), Block(0, 23), Block(0, 24), Block(0, 25), Block(1, 25), Block(2, 25), Block(3, 25), Block(4, 25), Block(4, 24), Block(3, 24), Block(2, 24), Block(1, 24), Block(1, 23), Block(2, 23), Block(3, 23), Block(4, 23), Block(4, 22), Block(3, 22), Block(2, 22), Block(1, 22), Block(1, 21), Block(2, 21), Block(3, 21), Block(4, 21), Block(4, 20), Block(3, 20), Block(2, 20), Block(1, 20), Block(1, 19), Block(2, 19), Block(3, 19), Block(4, 19), Block(5, 19), Block(5, 20), Block(6, 20), Block(6, 21), Block(6, 22), Block(6, 23), Block(6, 24), Block(6, 25), Block(7, 25), Block(8, 25), Block(9, 25), Block(10, 25), Block(11, 25), Block(12, 25), Block(13, 25), Block(14, 25), Block(15, 25), Block(16, 25), Block(17, 25), Block(17, 24), Block(16, 24), Block(15, 24), Block(14, 24), Block(13, 24), Block(12, 24), Block(11, 24), Block(10, 24), Block(9, 24), Block(8, 24), Block(7, 24), Block(7, 23), Block(8, 23), Block(9, 23), Block(10, 23), Block(11, 23), Block(12, 23)),
+                path = listOf(
+                    Block(14, 11),
+                    Block(13, 11),
+                    Block(12, 11),
+                    Block(11, 11),
+                    Block(10, 11),
+                    Block(9, 11),
+                    Block(8, 11),
+                    Block(7, 11),
+                    Block(7, 12),
+                    Block(7, 13),
+                    Block(6, 13),
+                    Block(5, 13),
+                    Block(4, 13),
+                    Block(3, 13),
+                    Block(2, 13),
+                    Block(1, 13),
+                    Block(0, 13),
+                    Block(0, 14),
+                    Block(0, 15),
+                    Block(0, 16),
+                    Block(0, 17),
+                    Block(0, 18),
+                    Block(0, 19),
+                    Block(0, 20),
+                    Block(0, 21),
+                    Block(0, 22),
+                    Block(0, 23),
+                    Block(0, 24),
+                    Block(0, 25),
+                    Block(1, 25),
+                    Block(2, 25),
+                    Block(3, 25),
+                    Block(4, 25),
+                    Block(4, 24),
+                    Block(3, 24),
+                    Block(2, 24),
+                    Block(1, 24),
+                    Block(1, 23),
+                    Block(2, 23),
+                    Block(3, 23),
+                    Block(4, 23),
+                    Block(4, 22),
+                    Block(3, 22),
+                    Block(2, 22),
+                    Block(1, 22),
+                    Block(1, 21),
+                    Block(2, 21),
+                    Block(3, 21),
+                    Block(4, 21),
+                    Block(4, 20),
+                    Block(3, 20),
+                    Block(2, 20),
+                    Block(1, 20),
+                    Block(1, 19),
+                    Block(2, 19),
+                    Block(3, 19),
+                    Block(4, 19),
+                    Block(5, 19),
+                    Block(5, 20),
+                    Block(6, 20),
+                    Block(6, 21),
+                    Block(6, 22),
+                    Block(6, 23),
+                    Block(6, 24),
+                    Block(6, 25),
+                    Block(7, 25),
+                    Block(8, 25),
+                    Block(9, 25),
+                    Block(10, 25),
+                    Block(11, 25),
+                    Block(12, 25),
+                    Block(13, 25),
+                    Block(14, 25),
+                    Block(15, 25),
+                    Block(16, 25),
+                    Block(17, 25),
+                    Block(17, 24),
+                    Block(16, 24),
+                    Block(15, 24),
+                    Block(14, 24),
+                    Block(13, 24),
+                    Block(12, 24),
+                    Block(11, 24),
+                    Block(10, 24),
+                    Block(9, 24),
+                    Block(8, 24),
+                    Block(7, 24),
+                    Block(7, 23),
+                    Block(8, 23),
+                    Block(9, 23),
+                    Block(10, 23),
+                    Block(11, 23),
+                    Block(12, 23),
+                    Block(13, 23)
+                ),
+                passed = listOf(
+                    Block(14, 11),
+                    Block(13, 11),
+                    Block(12, 11),
+                    Block(11, 11),
+                    Block(10, 11),
+                    Block(9, 11),
+                    Block(8, 11),
+                    Block(7, 11),
+                    Block(7, 12),
+                    Block(7, 13),
+                    Block(6, 13),
+                    Block(5, 13),
+                    Block(4, 13),
+                    Block(3, 13),
+                    Block(2, 13),
+                    Block(1, 13),
+                    Block(0, 13),
+                    Block(0, 14),
+                    Block(0, 15),
+                    Block(0, 16),
+                    Block(0, 17),
+                    Block(0, 18),
+                    Block(0, 19),
+                    Block(0, 20),
+                    Block(0, 21),
+                    Block(0, 22),
+                    Block(0, 23),
+                    Block(0, 24),
+                    Block(0, 25),
+                    Block(1, 25),
+                    Block(2, 25),
+                    Block(3, 25),
+                    Block(4, 25),
+                    Block(4, 24),
+                    Block(3, 24),
+                    Block(2, 24),
+                    Block(1, 24),
+                    Block(1, 23),
+                    Block(2, 23),
+                    Block(3, 23),
+                    Block(4, 23),
+                    Block(4, 22),
+                    Block(3, 22),
+                    Block(2, 22),
+                    Block(1, 22),
+                    Block(1, 21),
+                    Block(2, 21),
+                    Block(3, 21),
+                    Block(4, 21),
+                    Block(4, 20),
+                    Block(3, 20),
+                    Block(2, 20),
+                    Block(1, 20),
+                    Block(1, 19),
+                    Block(2, 19),
+                    Block(3, 19),
+                    Block(4, 19),
+                    Block(5, 19),
+                    Block(5, 20),
+                    Block(6, 20),
+                    Block(6, 21),
+                    Block(6, 22),
+                    Block(6, 23),
+                    Block(6, 24),
+                    Block(6, 25),
+                    Block(7, 25),
+                    Block(8, 25),
+                    Block(9, 25),
+                    Block(10, 25),
+                    Block(11, 25),
+                    Block(12, 25),
+                    Block(13, 25),
+                    Block(14, 25),
+                    Block(15, 25),
+                    Block(16, 25),
+                    Block(17, 25),
+                    Block(17, 24),
+                    Block(16, 24),
+                    Block(15, 24),
+                    Block(14, 24),
+                    Block(13, 24),
+                    Block(12, 24),
+                    Block(11, 24),
+                    Block(10, 24),
+                    Block(9, 24),
+                    Block(8, 24),
+                    Block(7, 24),
+                    Block(7, 23),
+                    Block(8, 23),
+                    Block(9, 23),
+                    Block(10, 23),
+                    Block(11, 23),
+                    Block(12, 23)
+                ),
                 width = 890,
                 height = 1280,
                 blockSize = 49,
