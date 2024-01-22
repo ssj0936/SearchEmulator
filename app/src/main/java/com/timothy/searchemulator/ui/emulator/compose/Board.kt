@@ -41,8 +41,8 @@ fun EmulatorPage(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(key1 =Unit){
-        viewModel.effect.collect{effect->
+    LaunchedEffect(key1 = Unit) {
+        viewModel.effect.collect { effect ->
             snackBarEffectHandle(effect, scope, snackbarHostState)
         }
     }
@@ -71,11 +71,20 @@ fun EmulatorPage(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 BoardView(
-                    state = state,
+                    state = { state },
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .padding(horizontal = 12.dp)
+                        .padding(horizontal = 12.dp),
+                    blockSize = state.blockSize,
+                    matrixW = state.matrixW,
+                    matrixH = state.matrixH,
+                    start = { state.start!! },
+                    dest = { state.dest!! },
+                    lastMovement = { state.lastMovement },
+                    passed = { state.passed },
+                    barrier = { state.barrier.toList() },
+                    finalPath = { state.path }
                 )
 //                Spacer(modifier = Modifier.height(8.dp))
                 BottomControlPanel(
@@ -91,15 +100,15 @@ fun EmulatorPage(
 
 fun snackBarEffectHandle(
     effect: Contract.Effect,
-    scope:CoroutineScope,
-    snackbarHostState:SnackbarHostState
-){
-    if(effect is Contract.Effect.OnSearchFinish){
+    scope: CoroutineScope,
+    snackbarHostState: SnackbarHostState
+) {
+    if (effect is Contract.Effect.OnSearchFinish) {
         val isSuccess = effect.isSuccess
         scope.launch {
-            snackbarHostState.showSnackbar(if(isSuccess) "found path" else "path not found")
+            snackbarHostState.showSnackbar(if (isSuccess) "found path" else "path not found")
         }
-    }else if(effect is Contract.Effect.OnBarrierCleaned){
+    } else if (effect is Contract.Effect.OnBarrierCleaned) {
         scope.launch {
             snackbarHostState.showSnackbar("Barrier cleaned")
         }

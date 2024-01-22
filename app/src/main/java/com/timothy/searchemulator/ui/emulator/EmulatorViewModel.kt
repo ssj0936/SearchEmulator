@@ -40,7 +40,8 @@ class EmulatorViewModel @Inject constructor(
             dest = Block(10, 10),
             barrier = hashSetOf(),
             searchStrategy = SearchDFS.instance,
-            searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
+            searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat()),
+            lastMovement = StatusType.Normal
         )
 
     override fun eventHandle(event: Event) {
@@ -119,6 +120,7 @@ class EmulatorViewModel @Inject constructor(
 
     private fun onTap(offset: Offset) {
         val block = offset.toBlock(currentState.blockSize)
+        if (block == currentState.start || block == currentState.dest) return
 
         movementRecordManager.record(block)
         movementRecordManager.stopRecording()
@@ -141,9 +143,9 @@ class EmulatorViewModel @Inject constructor(
     }
 
     private fun onDraggingEnd() {
-        if(currentState.status==Status.StartDragging)
+        if (currentState.status == Status.StartDragging)
             movementRecordManager.record(currentState.start!!)
-        else if(currentState.status==Status.DestDragging)
+        else if (currentState.status == Status.DestDragging)
             movementRecordManager.record(currentState.dest!!)
         movementRecordManager.stopRecording()
 
@@ -167,13 +169,13 @@ class EmulatorViewModel @Inject constructor(
             }
         )
 
-        if(newStatus==Status.StartDragging)
+        if (newStatus == Status.StartDragging)
             movementRecordManager.record(currentState.start!!)
-        else if(newStatus==Status.DestDragging)
+        else if (newStatus == Status.DestDragging)
             movementRecordManager.record(currentState.dest!!)
 
         setState {
-            copy(status = newStatus)
+            copy(status = newStatus, lastMovement = StatusType.Normal)
         }
     }
 
@@ -206,7 +208,7 @@ class EmulatorViewModel @Inject constructor(
     }
 
     private fun onBarrierClearButtonClicked() {
-        if(currentState.barrier.isEmpty()) return
+        if (currentState.barrier.isEmpty()) return
 
         movementRecordManager.startRecording(DRAWING_BARRIER)
             .record(currentState.barrier.toList())
@@ -217,52 +219,70 @@ class EmulatorViewModel @Inject constructor(
     }
 
     private fun onBarrierUndoButtonClicked() {
-        if(!movementRecordManager.hasUndoMovement()) return
-        val movement = movementRecordManager.undoLastMovement()?:return
-        when(movement){
-            is Movement.MoveStart->{
-                setState { copy(start = movement.from) }
+        if (!movementRecordManager.hasUndoMovement()) return
+        val movement = movementRecordManager.undoLastMovement() ?: return
+        when (movement) {
+            is Movement.MoveStart -> {
+                setState { copy(start = movement.from, lastMovement = StatusType.UndoEndPoint) }
             }
-            is Movement.MoveDest->{
-                setState { copy(dest = movement.from) }
+
+            is Movement.MoveDest -> {
+                setState { copy(dest = movement.from, lastMovement = StatusType.UndoEndPoint) }
             }
-            is Movement.DrawBarrier->{
+
+            is Movement.DrawBarrier -> {
                 val currentBarrier = currentState.barrier.toHashSet()
-                movement.drawPath.reversed().forEach {block->
-                    if(currentBarrier.contains(block))
+                movement.drawPath.reversed().forEach { block ->
+                    if (currentBarrier.contains(block))
                         currentBarrier.remove(block)
                     else
                         currentBarrier.add(block)
                 }
-                setState { copy(barrier = currentBarrier) }
+                setState {
+                    copy(
+                        barrier = currentBarrier,
+                        lastMovement = StatusType.UndoBarrier(movement.drawPath)
+                    )
+                }
             }
-            else -> {/*throw IllegalStateException("no movement to undo")*/}
+
+            else -> {/*throw IllegalStateException("no movement to undo")*/
+            }
         }
         setEffect(Effect.OnUndoEvent(movement = movement))
 
     }
 
     private fun onBarrierRedoButtonClicked() {
-        if(!movementRecordManager.hasRedoMovement()) return
-        val movement = movementRecordManager.redoLastMovement()?:return
-        when(movement){
-            is Movement.MoveStart->{
-                setState { copy(start = movement.to) }
+        if (!movementRecordManager.hasRedoMovement()) return
+        val movement = movementRecordManager.redoLastMovement() ?: return
+        when (movement) {
+            is Movement.MoveStart -> {
+                setState { copy(start = movement.to, lastMovement = StatusType.RedoEndPoint) }
             }
-            is Movement.MoveDest->{
-                setState { copy(dest = movement.to) }
+
+            is Movement.MoveDest -> {
+                setState { copy(dest = movement.to, lastMovement = StatusType.RedoEndPoint) }
             }
-            is Movement.DrawBarrier->{
+
+            is Movement.DrawBarrier -> {
                 val currentBarrier = currentState.barrier.toHashSet()
-                movement.drawPath.forEach {block->
-                    if(currentBarrier.contains(block))
+                movement.drawPath.forEach { block ->
+                    if (currentBarrier.contains(block))
                         currentBarrier.remove(block)
                     else
                         currentBarrier.add(block)
                 }
-                setState { copy(barrier = currentBarrier) }
+                setState {
+                    copy(
+                        barrier = currentBarrier,
+                        lastMovement = StatusType.RedoBarrier(movement.drawPath)
+                    )
+                }
             }
-            else -> {/*throw IllegalStateException("no movement to redo")*/}
+
+            else -> {/*throw IllegalStateException("no movement to redo")*/
+            }
         }
         setEffect(Effect.OnRedoEvent(movement = movement))
 

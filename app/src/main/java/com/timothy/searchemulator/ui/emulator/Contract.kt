@@ -61,6 +61,7 @@ class Contract{
         //final path
         val path:List<Block> = emptyList(),
 
+        val lastMovement: StatusType = StatusType.Normal,
         //animation
         val searchProcessDelay:Long,
     ):BaseState

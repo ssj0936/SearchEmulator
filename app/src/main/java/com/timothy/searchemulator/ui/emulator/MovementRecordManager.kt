@@ -11,6 +11,19 @@ enum class EditType{
     EDIT_NORMAL, EDIT_UNDO, EDIT_REDO
 }
 
+sealed class StatusType{
+    interface BarrierTimeMachine{
+        val diff:List<Block>
+    }
+
+    object Normal:StatusType()
+    object UndoEndPoint:StatusType()
+    object RedoEndPoint:StatusType()
+    data class UndoBarrier(override val diff:List<Block>):StatusType(), BarrierTimeMachine
+    data class RedoBarrier(override val diff:List<Block>):StatusType(), BarrierTimeMachine
+//    NORMAL, UNDO, REDO
+}
+
 sealed class Movement{
     data class MoveStart(val from:Block? = null, val to:Block):Movement()
     data class MoveDest(val from:Block, val to:Block):Movement()
