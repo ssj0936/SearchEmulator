@@ -32,12 +32,12 @@ import com.timothy.searchemulator.ui.theme.color
 fun BottomControlPanel(
     modifier: Modifier = Modifier,
     viewModel: EmulatorViewModel = hiltViewModel(),
-    state:Contract.State
+    isSizeAdjustable:Boolean,
 ) {
     Row(modifier = modifier) {
         ValueSlideBar(
             modifier = Modifier.weight(1f),
-            enabled = (state.status == Contract.Status.Idle),
+            enabled = isSizeAdjustable,
             value = getBoardSizeTick(viewModel.currentState.minSideBlockCnt),
             title = "size",
             valueRange = BOARD_SIZE_MIN.toFloat()..BOARD_SIZE_MAX.toFloat(),

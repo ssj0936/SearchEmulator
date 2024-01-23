@@ -65,9 +65,10 @@ fun EmulatorPage(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 ControlPanel(
-                    state = state,
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxWidth(),
+                    status = state.status,
+                    currentSearchStrategyType = state.searchStrategy.getType()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 BoardView(
@@ -91,7 +92,8 @@ fun EmulatorPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp),
-                    state = state
+
+                    isSizeAdjustable = (state.status == Contract.Status.Idle)
                 )
             }
         }

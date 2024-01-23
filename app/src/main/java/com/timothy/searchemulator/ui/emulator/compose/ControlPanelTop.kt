@@ -51,6 +51,7 @@ import com.timothy.searchemulator.ui.emulator.Contract.Status
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
 import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
+import com.timothy.searchemulator.ui.emulator.algo.SearchStrategy
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import com.timothy.searchemulator.ui.theme.color
 
@@ -113,7 +114,9 @@ val searchStrategyButtons = listOf<ToggleButtonOption>(
 @Composable
 fun ControlPanel(
     modifier: Modifier = Modifier,
-    state: Contract.State,
+//    state: Contract.State,
+    status: Status,
+    currentSearchStrategyType:SearchAlgo
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -124,8 +127,8 @@ fun ControlPanel(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PlayStateControlPanel(status = state.status)
-            SegmentedButtons(options = searchStrategyButtons, state = state)
+            PlayStateControlPanel(status = status)
+            SegmentedButtons(options = searchStrategyButtons, searchStrategyType = currentSearchStrategyType, enabled = (status == Status.Idle)/*, state = state*/)
         }
     }
 }
@@ -164,13 +167,15 @@ fun SegmentedButtons(
     options: List<ToggleButtonOption>,
     borderStrokeWidth: Dp = 1.dp,
     roundedCornerPercent: Int = 50,
-    state: Contract.State,
+//    state: Contract.State,
+    searchStrategyType: SearchAlgo,
+    enabled:Boolean,
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
     Row(modifier) {
         options.forEachIndexed { index, toggleButtonOption ->
-            val selected = state.searchStrategy.getType() == toggleButtonOption.tag
-            val enabled = state.status == Status.Idle
+            val selected = searchStrategyType/*state.searchStrategy.getType()*/ == toggleButtonOption.tag
+            /*val enabled = state.status == Status.Idle*/
 
             val buttonsModifier = Modifier
                 .wrapContentSize()
@@ -411,21 +416,21 @@ fun Modifier.ifThen(condition: Boolean, modifier: Modifier.() -> Modifier): Modi
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreviewTop() {
-    SearchEmulatorTheme {
-        ControlPanel(
-            state = Contract.State(
-                status = Status.Idle,
-                minSideBlockCnt = 20,
-                start = Block(3, 5),
-                dest = Block(14, 14),
-                barrier = hashSetOf(),
-                searchStrategy = SearchBFS.instance,
-                searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
-
-            )
-        )
-    }
-}
+//@Preview(showBackground = true)
+//@Composable
+//fun GreetingPreviewTop() {
+//    SearchEmulatorTheme {
+//        ControlPanel(
+//            state = Contract.State(
+//                status = Status.Idle,
+//                minSideBlockCnt = 20,
+//                start = Block(3, 5),
+//                dest = Block(14, 14),
+//                barrier = hashSetOf(),
+//                searchStrategy = SearchBFS.instance,
+//                searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
+//
+//            )
+//        )
+//    }
+//}
