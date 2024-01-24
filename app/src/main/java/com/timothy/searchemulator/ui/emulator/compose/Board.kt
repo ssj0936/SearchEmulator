@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
+import com.timothy.searchemulator.ui.emulator.StatusType
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -80,12 +81,13 @@ fun EmulatorPage(
                     blockSize = state.blockSize,
                     matrixW = state.matrixW,
                     matrixH = state.matrixH,
-                    start = { state.start!! },
-                    dest = { state.dest!! },
+                    start = state.start!!,
+                    dest = state.dest!!,
                     lastMovement = { state.lastMovement },
                     passed = { state.passed },
                     barrier = { state.barrier.toList() },
-                    finalPath = { state.path }
+                    finalPath = { state.path },
+                    isNeedAnimate = state.lastMovement is StatusType.EndPointTimeMachine
                 )
 //                Spacer(modifier = Modifier.height(8.dp))
                 BottomControlPanel(

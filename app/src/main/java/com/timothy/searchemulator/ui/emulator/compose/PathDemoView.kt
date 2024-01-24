@@ -3,8 +3,10 @@ package com.timothy.searchemulator.ui.emulator.compose
 import android.annotation.SuppressLint
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.SnapSpec
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.animateOffset
+import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.Canvas
@@ -56,12 +58,13 @@ fun BoardView(
     blockSize: Int,
     matrixW: Int,
     matrixH: Int,
-    start: () -> Block,
-    dest: () -> Block,
+    start: Block,
+    dest: Block,
     lastMovement: () -> StatusType,
     passed: () -> List<Block>,
     barrier: () -> List<Block>,
     finalPath: () -> List<Block>,
+    isNeedAnimate:Boolean,
 
     viewModel: EmulatorViewModel = hiltViewModel(),
 ) {
@@ -113,7 +116,7 @@ fun BoardView(
             passed = passed,
             barrier = barrier,
             finalPath = finalPath,
-
+            isNeedAnimate = isNeedAnimate,
             colorBackground = MaterialTheme.color.colorBlockBackground,
             colorPassed = MaterialTheme.color.colorBlockPassed,
             colorCurrent = MaterialTheme.color.colorBlockTail,
@@ -187,14 +190,6 @@ fun CanvasEndPointsWithAnimation(
         }, label = "animation of destOffset transition"
     ) { s -> s.second.toOffset(blockSize) }
 
-//        LaunchedEffect(key1 = startOffset){
-//            rememberStart = startOffset
-//        }
-//
-//        LaunchedEffect(key1 = destOffset){
-//            rememberDest = destOffset
-//        }
-
     Canvas(modifier = modifier) {
         drawEndPointWithOffset(/*startOffset*/startOffset, blockSize, colorStartPoint)
         drawEndPointWithOffset(/*destOffset*/destOffset, blockSize, colorDestPoint)
@@ -253,11 +248,65 @@ fun CanvasEndPoints(
     dest: () -> Block,
     colorStartPoint: Color,
     colorDestPoint: Color,
+    isAnimationNeed:Boolean,
 ) {
     Timber.d("CanvasEndPoints")
+    if(!isAnimationNeed) {
+        Canvas(modifier = modifier) {
+            drawEndPointWithOffset(start().toOffset(blockSize), blockSize, colorStartPoint)
+            drawEndPointWithOffset(dest().toOffset(blockSize), blockSize, colorDestPoint)
+        }
+    }else {
+        Timber.d("CanvasEndPoints(2)")
+//        Timber.d("(recompose) CanvasEndPoints")
+        val transition = updateTransition(
+            targetState = Pair(start(), dest()), label = "pathTransition"
+        )
+
+        val startOffset by transition.animateOffset(
+            transitionSpec = {
+                tween(
+                    durationMillis = 200,
+                    easing = LinearOutSlowInEasing
+                )
+            }, label = "animation of startOffset transition"
+        ) { s -> s.first.toOffset(blockSize) }
+
+        val destOffset by transition.animateOffset(
+            transitionSpec = {
+                tween(
+                    durationMillis = 200,
+                    easing = LinearOutSlowInEasing
+                )
+            }, label = "animation of destOffset transition"
+        ) { s -> s.second.toOffset(blockSize) }
+
+        Canvas(modifier = modifier) {
+            drawEndPointWithOffset(/*startOffset*/startOffset, blockSize, colorStartPoint)
+            drawEndPointWithOffset(/*destOffset*/destOffset, blockSize, colorDestPoint)
+        }
+    }
+
+}
+
+@Composable
+fun CanvasEndPoints(
+    modifier: Modifier = Modifier,
+    blockSize: Int,
+    node: Block,
+    color: Color,
+    isAnimationNeed:Boolean,
+) {
+    Timber.d("CanvasEndPoints???")
+
+    val offset by animateOffsetAsState(
+        targetValue = node.toOffset(blockSize),
+        animationSpec = if(isAnimationNeed) tween(durationMillis = 200) else SnapSpec(),
+        label = ""
+    )
+
     Canvas(modifier = modifier) {
-        drawEndPointWithOffset(start().toOffset(blockSize), blockSize, colorStartPoint)
-        drawEndPointWithOffset(dest().toOffset(blockSize), blockSize, colorDestPoint)
+        drawEndPointWithOffset(offset, blockSize, color)
     }
 }
 
@@ -269,13 +318,13 @@ fun BoardCanvases(
     blockSize: Int,
     matrixW: Int,
     matrixH: Int,
-    start: () -> Block,
-    dest: () -> Block,
+    start: Block,
+    dest: Block,
     lastMovement: () -> StatusType,
     passed: () -> List<Block>,
     barrier: () -> List<Block>,
     finalPath: () -> List<Block>,
-
+    isNeedAnimate:Boolean,
     colorBackground: Color,
     colorPassed: Color,
     colorCurrent: Color,
@@ -307,9 +356,15 @@ fun BoardCanvases(
         )
 
         CanvasEndPoints(
-            blockSize = blockSize, start = start, dest = dest,
-//            lastMovement = lastMovement,
-            colorStartPoint = colorStartPoint, colorDestPoint = colorDestPoint
+            blockSize = blockSize, node = start,
+            color = colorStartPoint,
+            isAnimationNeed = isNeedAnimate
+        )
+
+        CanvasEndPoints(
+            blockSize = blockSize, node = dest,
+            color = colorDestPoint,
+            isAnimationNeed = isNeedAnimate
         )
 
         CanvasFinalPath(

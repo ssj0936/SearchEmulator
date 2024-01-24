@@ -15,10 +15,11 @@ sealed class StatusType{
     interface BarrierTimeMachine{
         val diff:List<Block>
     }
+    interface EndPointTimeMachine
 
     object Normal:StatusType()
-    object UndoEndPoint:StatusType()
-    object RedoEndPoint:StatusType()
+    object UndoEndPoint:StatusType(),EndPointTimeMachine
+    object RedoEndPoint:StatusType(),EndPointTimeMachine
     data class UndoBarrier(override val diff:List<Block>):StatusType(), BarrierTimeMachine
     data class RedoBarrier(override val diff:List<Block>):StatusType(), BarrierTimeMachine
 //    NORMAL, UNDO, REDO
