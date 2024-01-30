@@ -24,6 +24,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -115,8 +117,8 @@ val searchStrategyButtons = listOf<ToggleButtonOption>(
 fun ControlPanel(
     modifier: Modifier = Modifier,
 //    state: Contract.State,
-    status: Status,
-    currentSearchStrategyType:SearchAlgo
+//    status: Status,
+//    currentSearchStrategyType:SearchAlgo
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -127,8 +129,8 @@ fun ControlPanel(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PlayStateControlPanel(status = status)
-            SegmentedButtons(options = searchStrategyButtons, searchStrategyType = currentSearchStrategyType, enabled = (status == Status.Idle)/*, state = state*/)
+            PlayStateControlPanel()
+            SegmentedButtons(options = searchStrategyButtons)
         }
     }
 }
@@ -168,19 +170,25 @@ fun SegmentedButtons(
     borderStrokeWidth: Dp = 1.dp,
     roundedCornerPercent: Int = 50,
 //    state: Contract.State,
-    searchStrategyType: SearchAlgo,
-    enabled:Boolean,
+//    searchStrategyType: SearchAlgo,
+//    enabled:Boolean,
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
+    val state by viewModel.state.collectAsState()
+    val status by viewModel.status.collectAsState()
+
+    val enabled = {(status == Status.Idle)}
     Row(modifier) {
         options.forEachIndexed { index, toggleButtonOption ->
-            val selected = searchStrategyType/*state.searchStrategy.getType()*/ == toggleButtonOption.tag
+            val selected = {state.searchStrategy.getType() == toggleButtonOption.tag}
+
+//            val selected = searchStrategyType/*state.searchStrategy.getType()*/ == toggleButtonOption.tag
             /*val enabled = state.status == Status.Idle*/
 
             val buttonsModifier = Modifier
                 .wrapContentSize()
                 .offset(x = if (index == 0) 0.dp else -borderStrokeWidth * index, y = 0.dp)
-                .zIndex(if (selected) 1f else 0f)
+                .zIndex(if (selected()) 1f else 0f)
 
             val shape: Shape = when (index) {
                 0 -> RoundedCornerShape(
@@ -207,20 +215,20 @@ fun SegmentedButtons(
 
             val border = BorderStroke(
                 width = borderStrokeWidth,
-                color = if (selected) MaterialTheme.color.buttonOutlinePressedColors else MaterialTheme.color.buttonOutlineColors.copy(
+                color = if (selected()) MaterialTheme.color.buttonOutlinePressedColors else MaterialTheme.color.buttonOutlineColors.copy(
                     alpha = .75f
                 )
             )
 
             val color = ButtonDefaults.outlinedButtonColors(
-                containerColor = if (selected) MaterialTheme.color.buttonOutlinePressedColors else Color.Transparent,
-                disabledContainerColor = if (selected) MaterialTheme.color.buttonOutlinePressedColors else Color.Transparent,
+                containerColor = if (selected()) MaterialTheme.color.buttonOutlinePressedColors else Color.Transparent,
+                disabledContainerColor = if (selected()) MaterialTheme.color.buttonOutlinePressedColors else Color.Transparent,
             )
 
-            val contentColor = if (selected)
-                MaterialTheme.color.buttonOutlineContentPressedColors.copy(alpha = if (enabled) 1f else .35f)
+            val contentColor = if (selected())
+                MaterialTheme.color.buttonOutlineContentPressedColors.copy(alpha = if (enabled()) 1f else .35f)
             else
-                MaterialTheme.color.buttonOutlineContentColors.copy(alpha = if (enabled) 1f else .35f)
+                MaterialTheme.color.buttonOutlineContentColors.copy(alpha = if (enabled()) 1f else .35f)
 
             OutlinedButton(
                 modifier = buttonsModifier,
@@ -234,7 +242,7 @@ fun SegmentedButtons(
                 shape = shape,
                 border = border,
                 colors = color,
-                enabled = enabled
+                enabled = enabled()
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -262,9 +270,11 @@ fun SegmentedButtons(
 @Composable
 fun PlayStateControlPanel(
     modifier: Modifier = Modifier,
-    status: Status,
+//    status: Status,
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
+    val status by viewModel.status.collectAsState()
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -286,8 +296,8 @@ fun PlayStateControlPanel(
                 ControlPanelButton(
                     modifier = buttonModifier,
                     data = controlPanelButtonWrappers[0],
-                    enabled = (status == Status.Idle) || (status == Status.Paused),
-                    pressed = status == Status.Started,
+                    enabled = { (status == Status.Idle) || (status == Status.Paused) },
+                    pressed = { status == Status.Started },
                     onClick = { viewModel.setEvent(Event.OnSearchBtnClick) }
                 )
 
@@ -295,8 +305,8 @@ fun PlayStateControlPanel(
                 ControlPanelButton(
                     modifier = buttonModifier,
                     data = controlPanelButtonWrappers[1],
-                    enabled = status == Status.Started,
-                    pressed = status == Status.Idle,
+                    enabled = { status == Status.Started },
+                    pressed = { status == Status.Idle },
                     onClick = { viewModel.setEvent(Event.OnPauseBtnClick) }
                 )
 
@@ -304,8 +314,7 @@ fun PlayStateControlPanel(
                 ControlPanelButton(
                     modifier = buttonModifier,
                     data = controlPanelButtonWrappers[2],
-                    enabled = (status == Status.Started) || (status == Status.SearchFinish) || (status == Status.Paused),
-                    pressed = false,
+                    enabled = { (status == Status.Started) || (status == Status.SearchFinish) || (status == Status.Paused) },
                     onClick = { viewModel.setEvent(Event.OnResetBtnClick) }
                 )
             }
@@ -334,8 +343,7 @@ fun PlayStateControlPanel(
                 ControlPanelButton(
                     modifier = buttonModifier,
                     data = controlPanelButtonWrappers[3],
-                    enabled = (status == Status.Idle),
-                    pressed = false,
+                    enabled = { status == Status.Idle },
                     onClick = { viewModel.setEvent(Event.OnBarrierUndoButtonClicked) }
                 )
 
@@ -343,8 +351,7 @@ fun PlayStateControlPanel(
                 ControlPanelButton(
                     modifier = buttonModifier,
                     data = controlPanelButtonWrappers[4],
-                    enabled = (status == Status.Idle),
-                    pressed = false,
+                    enabled = { status == Status.Idle },
                     onClick = { viewModel.setEvent(Event.OnBarrierRedoButtonClicked) }
                 )
 
@@ -352,8 +359,7 @@ fun PlayStateControlPanel(
                 ControlPanelButton(
                     modifier = buttonModifier,
                     data = controlPanelButtonWrappers[5],
-                    enabled = (status == Status.Idle),
-                    pressed = false,
+                    enabled = { status == Status.Idle },
                     onClick = { viewModel.setEvent(Event.OnBarrierClearButtonClicked) }
                 )
             }
@@ -365,8 +371,8 @@ fun PlayStateControlPanel(
 fun ControlPanelButton(
     modifier: Modifier = Modifier,
     data: ControlPanelButtonWrapper,
-    pressed: Boolean = false,
-    enabled: Boolean = true,
+    pressed: ()->Boolean = { false },
+    enabled: ()->Boolean = { true },
     onClick: () -> Unit = {}
 ) {
     when (data.type) {
@@ -374,8 +380,8 @@ fun ControlPanelButton(
             Box(
                 modifier = modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .alpha(if (enabled) 1f else .5f)
-                    .clickable(enabled, onClick = onClick)
+                    .alpha(if (enabled()) 1f else .5f)
+                    .clickable(enabled(), onClick = onClick)
                     .padding(horizontal = 4.dp, vertical = 8.dp)
             ) {
                 Column(
@@ -383,7 +389,7 @@ fun ControlPanelButton(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(id = if (data.iconPressed == null || !pressed) data.icon else data.iconPressed),
+                        imageVector = ImageVector.vectorResource(id = if (data.iconPressed == null || !pressed()) data.icon else data.iconPressed),
                         contentDescription = data.title,
                         tint = MaterialTheme.color.buttonColors
                     )

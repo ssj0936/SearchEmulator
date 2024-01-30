@@ -28,13 +28,12 @@ import com.timothy.searchemulator.ui.emulator.Contract.*
 class EmulatorViewModel @Inject constructor(
     private val movementRecordManager: MovementRecordManager
 ) :
-    BaseViewModel<State, Event, Effect>() {
+    BaseViewModel<State, Status, Event, Effect>() {
 
     private var job: Job? = null
 
     override fun createInitState(): State =
         State(
-            status = Status.Idle,
             minSideBlockCnt = getBoardSize(BOARD_SIZE_DEFAULT.toFloat()),
             start = Block(0, 0),
             dest = Block(10, 10),
@@ -43,6 +42,8 @@ class EmulatorViewModel @Inject constructor(
             searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat()),
             lastMovement = StatusType.Normal
         )
+
+    override fun createInitStatus(): Status = Status.Idle
 
     override fun eventHandle(event: Event) {
         when (event) {
@@ -76,27 +77,27 @@ class EmulatorViewModel @Inject constructor(
 
             //barrier events
             is Event.OnDraggingStart -> {
-                if (currentState.status != Status.Idle) return
+                if (currentStatus != Status.Idle) return
                 onDraggingStart(event.offset)
             }
 
             is Event.OnDraggingEnd -> {
-                if (currentState.status !is DrawingType) return
+                if (currentStatus !is DrawingType) return
                 onDraggingEnd()
             }
 
             is Event.OnDragging -> {
-                if (currentState.status !is DrawingType) return
+                if (currentStatus !is DrawingType) return
                 onBarrierDragging(event.block)
             }
 
             is Event.OnPressed -> {
-                if (currentState.status != Status.Idle) return
+                if (currentStatus != Status.Idle) return
                 onPressed(event.offset)
             }
 
             is Event.OnTap -> {
-                if (currentState.status !is DrawingType) return
+                if (currentStatus !is DrawingType) return
                 onTap(event.offset)
             }
 
@@ -125,31 +126,33 @@ class EmulatorViewModel @Inject constructor(
         movementRecordManager.record(block)
         movementRecordManager.stopRecording()
 
-        if (currentState.barrier.contains(block))
+        if (currentState.barrier.contains(block)) {
             setState {
                 copy(
-                    status = Status.Idle,
                     barrier = barrier.toHashSet().apply { remove(block) }
                 )
             }
-        else
+            setStatus(Status.Idle)
+        }
+        else {
             setState {
                 copy(
-                    status = Status.Idle,
                     barrier = barrier.toHashSet().apply { add(block) }
                 )
             }
+            setStatus(Status.Idle)
+        }
 
     }
 
     private fun onDraggingEnd() {
-        if (currentState.status == Status.StartDragging)
+        if (currentStatus == Status.StartDragging)
             movementRecordManager.record(currentState.start!!)
-        else if (currentState.status == Status.DestDragging)
+        else if (currentStatus == Status.DestDragging)
             movementRecordManager.record(currentState.dest!!)
         movementRecordManager.stopRecording()
 
-        setState { copy(status = Status.Idle) }
+        setStatus(Status.Idle)
     }
 
     private fun onDraggingStart(offset: Offset) {
@@ -158,7 +161,7 @@ class EmulatorViewModel @Inject constructor(
             currentState.dest -> Status.DestDragging
             else -> Status.BarrierDrawing
         }
-        if (currentState.status == newStatus) return
+        if (currentStatus == newStatus) return
 
         //MovementRecordManager init recording
         movementRecordManager.startRecording(
@@ -175,14 +178,15 @@ class EmulatorViewModel @Inject constructor(
             movementRecordManager.record(currentState.dest!!)
 
         setState {
-            copy(status = newStatus, lastMovement = StatusType.Normal)
+            copy(lastMovement = StatusType.Normal)
         }
+        setStatus(newStatus)
     }
 
     private fun onBarrierDragging(block: Block) {
         if (!block.isValidBlock) return
 
-        when (currentState.status) {
+        when (currentStatus) {
             is Status.StartDragging -> {
                 if (currentState.barrier.contains(block) || block == currentState.dest) return
                 setState { copy(start = block) }
@@ -303,7 +307,6 @@ class EmulatorViewModel @Inject constructor(
 
         setState {
             copy(
-                status = status,
                 width = width,
                 height = height,
                 blockSize = blockSize,
@@ -311,7 +314,6 @@ class EmulatorViewModel @Inject constructor(
                 matrixH = matrixH,
             )
         }
-
     }
 
     private fun onSearchPause() {
@@ -378,26 +380,26 @@ class EmulatorViewModel @Inject constructor(
     }
 
     private fun onStartButtonClick() {
-        if (currentState.status == Status.Paused) {
+        if (currentStatus == Status.Paused) {
             onSearchResume()
         } else {
             onSearchLaunch()
         }
         setState {
             copy(
-                status = Status.Started,
                 path = emptyList()
             )
         }
+        setStatus(Status.Started)
     }
 
     private fun onSearchFinish(isFound: Boolean, path: List<Block>?) {
         setState {
             copy(
-                status = Status.SearchFinish,
                 path = path ?: emptyList()
             )
         }
+        setStatus(Status.SearchFinish)
 
         setEffect(Effect.OnSearchFinish(isFound))
     }
@@ -423,7 +425,7 @@ class EmulatorViewModel @Inject constructor(
 
     private fun onPauseButtonClick() {
         onSearchPause()
-        setState { copy(status = Status.Paused) }
+        setStatus(Status.Paused)
     }
 
     private fun onStopButtonClick() {
@@ -431,11 +433,12 @@ class EmulatorViewModel @Inject constructor(
         //reset
         setState {
             copy(
-                status = Status.Idle,
                 passed = emptyList(),
                 path = emptyList()
             )
         }
+        setStatus(Status.Idle)
+
     }
 
     private fun onSizeSliderChange(size: Float) {
@@ -456,7 +459,7 @@ class EmulatorViewModel @Inject constructor(
 
     private fun onSpeedSliderChange(speed: Float) {
         setState { copy(searchProcessDelay = getMovementSpeedDelay(speed)) }
-        if (currentState.status == Status.Started) {
+        if (currentStatus == Status.Started) {
             onSearchPause()
             onSearchResume()
         }

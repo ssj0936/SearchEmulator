@@ -8,6 +8,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -32,12 +33,13 @@ import com.timothy.searchemulator.ui.theme.color
 fun BottomControlPanel(
     modifier: Modifier = Modifier,
     viewModel: EmulatorViewModel = hiltViewModel(),
-    isSizeAdjustable:Boolean,
 ) {
+    val status by viewModel.status.collectAsState()
+
     Row(modifier = modifier) {
         ValueSlideBar(
             modifier = Modifier.weight(1f),
-            enabled = isSizeAdjustable,
+            enabled = { status == Contract.Status.Idle },
             value = getBoardSizeTick(viewModel.currentState.minSideBlockCnt),
             title = "size",
             valueRange = BOARD_SIZE_MIN.toFloat()..BOARD_SIZE_MAX.toFloat(),
@@ -59,7 +61,7 @@ fun BottomControlPanel(
 @Composable
 fun ValueSlideBar(
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
+    enabled: ()->Boolean = { true },
     value: Float,
     title: String,
     valueRange: ClosedFloatingPointRange<Float>,
@@ -80,7 +82,7 @@ fun ValueSlideBar(
         Spacer(modifier = Modifier.width(12.dp))
 
         Slider(
-            enabled = enabled,
+            enabled = enabled(),
             value = sliderPosition,
             valueRange = valueRange,
             steps = steps,

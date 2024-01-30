@@ -38,7 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope as rememberCoroutineScope
 fun EmulatorPage(
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
-    val state by viewModel.state.collectAsState()
+//    val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -68,34 +68,20 @@ fun EmulatorPage(
                 ControlPanel(
                     modifier = Modifier
                         .fillMaxWidth(),
-                    status = state.status,
-                    currentSearchStrategyType = state.searchStrategy.getType()
+//                    status = state.status,
+//                    currentSearchStrategyType = state.searchStrategy.getType()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 BoardView(
-                    state = { state },
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
                         .padding(horizontal = 12.dp),
-                    blockSize = state.blockSize,
-                    matrixW = state.matrixW,
-                    matrixH = state.matrixH,
-                    start = state.start!!,
-                    dest = state.dest!!,
-                    lastMovement = { state.lastMovement },
-                    passed = { state.passed },
-                    barrier = { state.barrier.toList() },
-                    finalPath = { state.path },
-                    isNeedAnimate = state.lastMovement is StatusType.EndPointTimeMachine
                 )
-//                Spacer(modifier = Modifier.height(8.dp))
                 BottomControlPanel(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp),
-
-                    isSizeAdjustable = (state.status == Contract.Status.Idle)
+                        .padding(horizontal = 12.dp)
                 )
             }
         }

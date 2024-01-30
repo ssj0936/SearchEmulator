@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,18 +55,6 @@ import timber.log.Timber
 @Composable
 fun BoardView(
     modifier: Modifier,
-    state: () -> Contract.State,
-    blockSize: Int,
-    matrixW: Int,
-    matrixH: Int,
-    start: Block,
-    dest: Block,
-    lastMovement: () -> StatusType,
-    passed: () -> List<Block>,
-    barrier: () -> List<Block>,
-    finalPath: () -> List<Block>,
-    isNeedAnimate:Boolean,
-
     viewModel: EmulatorViewModel = hiltViewModel(),
 ) {
     var availableW by remember { mutableIntStateOf(0) }
@@ -106,17 +95,6 @@ fun BoardView(
         Timber.d("(recompose) BoardView")
         BoardCanvases(
             modifier = Modifier.fillMaxSize(),
-            stateProvider = state,
-            blockSize = blockSize,
-            matrixW = matrixW,
-            matrixH = matrixH,
-            start = start,
-            dest = dest,
-            lastMovement = lastMovement,
-            passed = passed,
-            barrier = barrier,
-            finalPath = finalPath,
-            isNeedAnimate = isNeedAnimate,
             colorBackground = MaterialTheme.color.colorBlockBackground,
             colorPassed = MaterialTheme.color.colorBlockPassed,
             colorCurrent = MaterialTheme.color.colorBlockTail,
@@ -130,21 +108,21 @@ fun BoardView(
 @Composable
 fun CanvasBackground(
     modifier: Modifier = Modifier,
-    blockSize: Int,
-    matrixW: Int,
-    matrixH: Int,
+    blockSizeProvider: () -> Int,
+    matrixWProvider: () -> Int,
+    matrixHProvider: () -> Int,
     colorBackground: Color,
 ) {
     Timber.d("CanvasBackground")
     Canvas(modifier = modifier) {
-        drawBackground(blockSize, matrixW, matrixH, colorBackground)
+        drawBackground(blockSizeProvider(), matrixWProvider(), matrixHProvider(), colorBackground)
     }
 }
 
 @Composable
 fun CanvasPassed(
     modifier: Modifier = Modifier,
-    blockSize: Int,
+    blockSizeProvider: () -> Int,
     passedProvider: () -> List<Block>,
     colorPassed: Color,
     colorCurrent: Color,
@@ -152,90 +130,27 @@ fun CanvasPassed(
     if (passedProvider().isEmpty()) return
     Timber.d("CanvasPassed")
     Canvas(modifier = modifier) {
-        drawPassedBlocks(passedProvider(), blockSize, colorPassed, colorCurrent)
-    }
-}
-
-@Composable
-fun CanvasEndPointsWithAnimation(
-    modifier: Modifier = Modifier,
-    blockSize: Int,
-    start: () -> Block,
-    dest: () -> Block,
-    lastMovement: () -> StatusType,
-    colorStartPoint: Color,
-    colorDestPoint: Color,
-) {
-    Timber.d("CanvasEndPoints(2)")
-//        Timber.d("(recompose) CanvasEndPoints")
-    val transition = updateTransition(
-        targetState = Triple(start(), dest(), lastMovement()), label = "pathTransition"
-    )
-
-    val startOffset by transition.animateOffset(
-        transitionSpec = {
-            tween(
-                durationMillis = if (this.targetState.third == StatusType.Normal) 0 else 200,
-                easing = LinearOutSlowInEasing
-            )
-        }, label = "animation of startOffset transition"
-    ) { s -> s.first.toOffset(blockSize) }
-
-    val destOffset by transition.animateOffset(
-        transitionSpec = {
-            tween(
-                durationMillis = if (this.targetState.third == StatusType.Normal) 0 else 200,
-                easing = LinearOutSlowInEasing
-            )
-        }, label = "animation of destOffset transition"
-    ) { s -> s.second.toOffset(blockSize) }
-
-    Canvas(modifier = modifier) {
-        drawEndPointWithOffset(/*startOffset*/startOffset, blockSize, colorStartPoint)
-        drawEndPointWithOffset(/*destOffset*/destOffset, blockSize, colorDestPoint)
+        drawPassedBlocks(passedProvider(), blockSizeProvider(), colorPassed, colorCurrent)
     }
 }
 
 @Composable
 fun CanvasBarrier(
     modifier: Modifier = Modifier,
-    barrier: () -> List<Block>,
-    blockSize: Int,
-    matrixW: Int,
-    matrixH: Int,
+    barrier: () -> HashSet<Block>,
+    blockSizeProvider: () -> Int,
+    matrixWProvider: () -> Int,
+    matrixHProvider: () -> Int,
     colorBarrier: Color
 ) {
     Timber.d("CanvasBarrier")
     Canvas(modifier = modifier) {
-
-//        if(state.lastMovement is StatusType.BarrierTimeMachine){
-//            Timber.d("drawBarrierWithAnimation")
-//            val lastMovement = state.lastMovement.diff
-//            val needToShow = mutableListOf<Block>()
-//            val needToHide = mutableListOf<Block>()
-//            val others = state.barrier.toHashSet()
-//            lastMovement.forEach {
-//                if(others.contains(it))//目前已經有了，所以本來沒有，要show出來
-//                    needToShow.add(it)
-//                else //目前沒有，所以本來有，要hide
-//                    needToHide.add(it)
-//                others.remove(it)
-//            }
-//
-//            drawBarrierWithAnimation(
-//                barrierShow = needToShow,
-//                barrierHide = needToHide,
-//                others = others.toList(),
-//                matrixW,
-//                matrixH,
-//                blockSize,
-//                colorBarrier,
-//                bias = alphaBias
-//            )
-//        }else {
-//        Timber.d("drawBarrier")
         drawBarrier(
-            barrier().toList(), matrixW, matrixH, blockSize, colorBarrier
+            barrier().toList(),
+            matrixWProvider(),
+            matrixHProvider(),
+            blockSizeProvider(),
+            colorBarrier
         )
     }
 }
@@ -243,70 +158,21 @@ fun CanvasBarrier(
 @Composable
 fun CanvasEndPoints(
     modifier: Modifier = Modifier,
-    blockSize: Int,
-    start: () -> Block,
-    dest: () -> Block,
-    colorStartPoint: Color,
-    colorDestPoint: Color,
-    isAnimationNeed:Boolean,
-) {
-    Timber.d("CanvasEndPoints")
-    if(!isAnimationNeed) {
-        Canvas(modifier = modifier) {
-            drawEndPointWithOffset(start().toOffset(blockSize), blockSize, colorStartPoint)
-            drawEndPointWithOffset(dest().toOffset(blockSize), blockSize, colorDestPoint)
-        }
-    }else {
-        Timber.d("CanvasEndPoints(2)")
-//        Timber.d("(recompose) CanvasEndPoints")
-        val transition = updateTransition(
-            targetState = Pair(start(), dest()), label = "pathTransition"
-        )
-
-        val startOffset by transition.animateOffset(
-            transitionSpec = {
-                tween(
-                    durationMillis = 200,
-                    easing = LinearOutSlowInEasing
-                )
-            }, label = "animation of startOffset transition"
-        ) { s -> s.first.toOffset(blockSize) }
-
-        val destOffset by transition.animateOffset(
-            transitionSpec = {
-                tween(
-                    durationMillis = 200,
-                    easing = LinearOutSlowInEasing
-                )
-            }, label = "animation of destOffset transition"
-        ) { s -> s.second.toOffset(blockSize) }
-
-        Canvas(modifier = modifier) {
-            drawEndPointWithOffset(/*startOffset*/startOffset, blockSize, colorStartPoint)
-            drawEndPointWithOffset(/*destOffset*/destOffset, blockSize, colorDestPoint)
-        }
-    }
-
-}
-
-@Composable
-fun CanvasEndPoints(
-    modifier: Modifier = Modifier,
-    blockSize: Int,
-    node: Block,
+    blockSizeProvider: () -> Int,
+    nodeProvider: () -> Block,
     color: Color,
-    isAnimationNeed:Boolean,
+    isAnimationNeed: () -> Boolean,
 ) {
     Timber.d("CanvasEndPoints???")
 
     val offset by animateOffsetAsState(
-        targetValue = node.toOffset(blockSize),
-        animationSpec = if(isAnimationNeed) tween(durationMillis = 200) else SnapSpec(),
+        targetValue = nodeProvider().toOffset(blockSizeProvider()),
+        animationSpec = if (isAnimationNeed()) tween(durationMillis = 200) else SnapSpec(),
         label = ""
     )
 
     Canvas(modifier = modifier) {
-        drawEndPointWithOffset(offset, blockSize, color)
+        drawEndPointWithOffset(offset, blockSizeProvider(), color)
     }
 }
 
@@ -314,63 +180,55 @@ fun CanvasEndPoints(
 @Composable
 fun BoardCanvases(
     modifier: Modifier = Modifier,
-    stateProvider: () -> Contract.State,
-    blockSize: Int,
-    matrixW: Int,
-    matrixH: Int,
-    start: Block,
-    dest: Block,
-    lastMovement: () -> StatusType,
-    passed: () -> List<Block>,
-    barrier: () -> List<Block>,
-    finalPath: () -> List<Block>,
-    isNeedAnimate:Boolean,
     colorBackground: Color,
     colorPassed: Color,
     colorCurrent: Color,
     colorBarrier: Color,
     colorStartPoint: Color,
     colorDestPoint: Color,
+    viewModel: EmulatorViewModel = hiltViewModel()
 ) {
+    val state by viewModel.state.collectAsState()
+
     Timber.d("(recompose) BoardCanvas")
     Box(modifier = modifier) {
         CanvasBackground(
-            blockSize = blockSize,
-            matrixW = matrixW,
-            matrixH = matrixH,
+            blockSizeProvider = { state.blockSize },
+            matrixWProvider = { state.matrixW },
+            matrixHProvider = { state.matrixH },
             colorBackground = colorBackground
         )
         CanvasPassed(
-            passedProvider = passed,
-            blockSize = blockSize,
+            passedProvider = { state.passed },
+            blockSizeProvider = { state.blockSize },
             colorPassed = colorPassed,
             colorCurrent = colorCurrent
         )
 
         CanvasBarrier(
-            barrier = barrier,
-            blockSize = blockSize,
-            matrixW = matrixW,
-            matrixH = matrixH,
+            barrier = { state.barrier },
+            blockSizeProvider = { state.blockSize },
+            matrixWProvider = { state.matrixW },
+            matrixHProvider = { state.matrixH },
             colorBarrier = colorBarrier
         )
 
         CanvasEndPoints(
-            blockSize = blockSize, node = start,
+            blockSizeProvider = { state.blockSize }, nodeProvider = { state.start!! },
             color = colorStartPoint,
-            isAnimationNeed = isNeedAnimate
+            isAnimationNeed = { state.lastMovement is StatusType.EndPointTimeMachine }
         )
 
         CanvasEndPoints(
-            blockSize = blockSize, node = dest,
+            blockSizeProvider = { state.blockSize }, nodeProvider = { state.dest!! },
             color = colorDestPoint,
-            isAnimationNeed = isNeedAnimate
+            isAnimationNeed = { state.lastMovement is StatusType.EndPointTimeMachine }
         )
 
         CanvasFinalPath(
             modifier = Modifier.fillMaxSize(),
-            blockSize = blockSize,
-            finalPathProvider = finalPath,
+            blockSizeProvider = { state.blockSize },
+            finalPathProvider = { state.path },
             pathColor = MaterialTheme.color.colorBlockPath,
         )
     }
@@ -379,7 +237,7 @@ fun BoardCanvases(
 @Composable
 fun CanvasFinalPath(
     modifier: Modifier = Modifier,
-    blockSize: Int,
+    blockSizeProvider: () -> Int,
     finalPathProvider: () -> List<Block>,
     animationMsPerBlock: Int = MS_PER_PATH_BLOCK,
     pathColor: Color,
@@ -394,8 +252,8 @@ fun CanvasFinalPath(
     val finalPathOffsets: List<Offset> = remember {
         finalPath.map {
             Offset(
-                blockSize * it.x.toFloat() + blockSize / 2,
-                blockSize * it.y.toFloat() + blockSize / 2
+                blockSizeProvider() * it.x.toFloat() + blockSizeProvider() / 2,
+                blockSizeProvider() * it.y.toFloat() + blockSizeProvider() / 2
             )
         }
     }
@@ -403,20 +261,27 @@ fun CanvasFinalPath(
         mutableIntStateOf(0)
     }
 
-    val currentIndexValue by animateIntAsState(targetValue = targetIndexValue,
+    val animateIndexValue by animateIntAsState(
+        targetValue = targetIndexValue,
         animationSpec = tween(
             durationMillis = finalPath.size * animationMsPerBlock, easing = LinearEasing
         ),
         label = "",
-        finishedListener = { onAnimationFinish() })
+        finishedListener = { onAnimationFinish() }
+    )
+    var currentIndexValue :Int =  remember{ -1 }
     //animation Path
     Canvas(modifier = modifier) {
-        if (currentIndexValue == 0) {
-            currPath.moveTo(finalPathOffsets.first().x, finalPathOffsets.first().y)
-        } else {
-            currPath.lineTo(
-                finalPathOffsets[currentIndexValue].x, finalPathOffsets[currentIndexValue].y
-            )
+        if(currentIndexValue < animateIndexValue){
+            for(i in currentIndexValue+1 .. animateIndexValue ){
+                if (i == 0)
+                    currPath.moveTo(finalPathOffsets.first().x, finalPathOffsets.first().y)
+                else
+                    currPath.lineTo(
+                        finalPathOffsets[i].x, finalPathOffsets[i].y
+                    )
+            }
+            currentIndexValue = animateIndexValue
         }
 
         drawPath(
@@ -428,7 +293,7 @@ fun CanvasFinalPath(
 
     //set targetValue
     LaunchedEffect(key1 = Unit) {
-        targetIndexValue = finalPath.size - 1
+        targetIndexValue = finalPathOffsets.size - 1
     }
 }
 
@@ -617,311 +482,3 @@ fun DrawScope.drawUnitBlockFilledFromOffset(
         style = Fill
     )
 }
-
-//
-//@Preview
-//@Composable
-//fun PreviewBoard() {
-//    SearchEmulatorTheme {
-//        BoardView(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(horizontal = 12.dp),
-//            state = Contract.State(
-//                status = Contract.Status.Idle,
-//                minSideBlockCnt = 18,
-//                start = Block(14, 11),
-//                dest = Block(13, 23),
-//                barrier = hashSetOf(
-//                    Block(4, 4),
-//                    Block(8, 9),
-//                    Block(12, 14),
-//                    Block(12, 15),
-//                    Block(16, 19),
-//                    Block(16, 20),
-//                    Block(4, 9),
-//                    Block(8, 14),
-//                    Block(12, 18),
-//                    Block(0, 9),
-//                    Block(8, 18),
-//                    Block(4, 15),
-//                    Block(4, 18),
-//                    Block(17, 6),
-//                    Block(17, 7),
-//                    Block(13, 7),
-//                    Block(9, 3),
-//                    Block(13, 9),
-//                    Block(17, 14),
-//                    Block(9, 7),
-//                    Block(5, 4),
-//                    Block(9, 9),
-//                    Block(13, 14),
-//                    Block(1, 4),
-//                    Block(5, 9),
-//                    Block(9, 14),
-//                    Block(13, 18),
-//                    Block(1, 9),
-//                    Block(1, 10),
-//                    Block(5, 14),
-//                    Block(9, 18),
-//                    Block(5, 15),
-//                    Block(5, 18),
-//                    Block(5, 21),
-//                    Block(5, 22),
-//                    Block(5, 23),
-//                    Block(5, 24),
-//                    Block(5, 25),
-//                    Block(14, 7),
-//                    Block(10, 3),
-//                    Block(10, 7),
-//                    Block(6, 4),
-//                    Block(10, 9),
-//                    Block(14, 14),
-//                    Block(6, 6),
-//                    Block(2, 3),
-//                    Block(6, 9),
-//                    Block(10, 14),
-//                    Block(14, 18),
-//                    Block(6, 10),
-//                    Block(10, 15),
-//                    Block(14, 19),
-//                    Block(6, 11),
-//                    Block(6, 12),
-//                    Block(2, 9),
-//                    Block(6, 14),
-//                    Block(10, 18),
-//                    Block(10, 20),
-//                    Block(10, 21),
-//                    Block(6, 18),
-//                    Block(10, 22),
-//                    Block(15, 7),
-//                    Block(11, 3),
-//                    Block(11, 7),
-//                    Block(7, 3),
-//                    Block(7, 4),
-//                    Block(11, 9),
-//                    Block(15, 14),
-//                    Block(7, 7),
-//                    Block(3, 3),
-//                    Block(3, 4),
-//                    Block(7, 9),
-//                    Block(11, 15),
-//                    Block(15, 19),
-//                    Block(3, 9),
-//                    Block(7, 14),
-//                    Block(11, 18),
-//                    Block(11, 19),
-//                    Block(11, 20),
-//                    Block(7, 18),
-//                    Block(3, 15),
-//                    Block(3, 16),
-//                    Block(3, 17),
-//                    Block(16, 7),
-//                    Block(12, 7),
-//                    Block(8, 3),
-//                    Block(12, 9),
-//                    Block(16, 14),
-//                    Block(8, 7)
-//                ),
-//                searchStrategy = SearchBFS.instance,
-//                searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat()),
-//                path = listOf(
-//                    Block(14, 11),
-//                    Block(13, 11),
-//                    Block(12, 11),
-//                    Block(11, 11),
-//                    Block(10, 11),
-//                    Block(9, 11),
-//                    Block(8, 11),
-//                    Block(7, 11),
-//                    Block(7, 12),
-//                    Block(7, 13),
-//                    Block(6, 13),
-//                    Block(5, 13),
-//                    Block(4, 13),
-//                    Block(3, 13),
-//                    Block(2, 13),
-//                    Block(1, 13),
-//                    Block(0, 13),
-//                    Block(0, 14),
-//                    Block(0, 15),
-//                    Block(0, 16),
-//                    Block(0, 17),
-//                    Block(0, 18),
-//                    Block(0, 19),
-//                    Block(0, 20),
-//                    Block(0, 21),
-//                    Block(0, 22),
-//                    Block(0, 23),
-//                    Block(0, 24),
-//                    Block(0, 25),
-//                    Block(1, 25),
-//                    Block(2, 25),
-//                    Block(3, 25),
-//                    Block(4, 25),
-//                    Block(4, 24),
-//                    Block(3, 24),
-//                    Block(2, 24),
-//                    Block(1, 24),
-//                    Block(1, 23),
-//                    Block(2, 23),
-//                    Block(3, 23),
-//                    Block(4, 23),
-//                    Block(4, 22),
-//                    Block(3, 22),
-//                    Block(2, 22),
-//                    Block(1, 22),
-//                    Block(1, 21),
-//                    Block(2, 21),
-//                    Block(3, 21),
-//                    Block(4, 21),
-//                    Block(4, 20),
-//                    Block(3, 20),
-//                    Block(2, 20),
-//                    Block(1, 20),
-//                    Block(1, 19),
-//                    Block(2, 19),
-//                    Block(3, 19),
-//                    Block(4, 19),
-//                    Block(5, 19),
-//                    Block(5, 20),
-//                    Block(6, 20),
-//                    Block(6, 21),
-//                    Block(6, 22),
-//                    Block(6, 23),
-//                    Block(6, 24),
-//                    Block(6, 25),
-//                    Block(7, 25),
-//                    Block(8, 25),
-//                    Block(9, 25),
-//                    Block(10, 25),
-//                    Block(11, 25),
-//                    Block(12, 25),
-//                    Block(13, 25),
-//                    Block(14, 25),
-//                    Block(15, 25),
-//                    Block(16, 25),
-//                    Block(17, 25),
-//                    Block(17, 24),
-//                    Block(16, 24),
-//                    Block(15, 24),
-//                    Block(14, 24),
-//                    Block(13, 24),
-//                    Block(12, 24),
-//                    Block(11, 24),
-//                    Block(10, 24),
-//                    Block(9, 24),
-//                    Block(8, 24),
-//                    Block(7, 24),
-//                    Block(7, 23),
-//                    Block(8, 23),
-//                    Block(9, 23),
-//                    Block(10, 23),
-//                    Block(11, 23),
-//                    Block(12, 23),
-//                    Block(13, 23)
-//                ),
-//                passed = listOf(
-//                    Block(14, 11),
-//                    Block(13, 11),
-//                    Block(12, 11),
-//                    Block(11, 11),
-//                    Block(10, 11),
-//                    Block(9, 11),
-//                    Block(8, 11),
-//                    Block(7, 11),
-//                    Block(7, 12),
-//                    Block(7, 13),
-//                    Block(6, 13),
-//                    Block(5, 13),
-//                    Block(4, 13),
-//                    Block(3, 13),
-//                    Block(2, 13),
-//                    Block(1, 13),
-//                    Block(0, 13),
-//                    Block(0, 14),
-//                    Block(0, 15),
-//                    Block(0, 16),
-//                    Block(0, 17),
-//                    Block(0, 18),
-//                    Block(0, 19),
-//                    Block(0, 20),
-//                    Block(0, 21),
-//                    Block(0, 22),
-//                    Block(0, 23),
-//                    Block(0, 24),
-//                    Block(0, 25),
-//                    Block(1, 25),
-//                    Block(2, 25),
-//                    Block(3, 25),
-//                    Block(4, 25),
-//                    Block(4, 24),
-//                    Block(3, 24),
-//                    Block(2, 24),
-//                    Block(1, 24),
-//                    Block(1, 23),
-//                    Block(2, 23),
-//                    Block(3, 23),
-//                    Block(4, 23),
-//                    Block(4, 22),
-//                    Block(3, 22),
-//                    Block(2, 22),
-//                    Block(1, 22),
-//                    Block(1, 21),
-//                    Block(2, 21),
-//                    Block(3, 21),
-//                    Block(4, 21),
-//                    Block(4, 20),
-//                    Block(3, 20),
-//                    Block(2, 20),
-//                    Block(1, 20),
-//                    Block(1, 19),
-//                    Block(2, 19),
-//                    Block(3, 19),
-//                    Block(4, 19),
-//                    Block(5, 19),
-//                    Block(5, 20),
-//                    Block(6, 20),
-//                    Block(6, 21),
-//                    Block(6, 22),
-//                    Block(6, 23),
-//                    Block(6, 24),
-//                    Block(6, 25),
-//                    Block(7, 25),
-//                    Block(8, 25),
-//                    Block(9, 25),
-//                    Block(10, 25),
-//                    Block(11, 25),
-//                    Block(12, 25),
-//                    Block(13, 25),
-//                    Block(14, 25),
-//                    Block(15, 25),
-//                    Block(16, 25),
-//                    Block(17, 25),
-//                    Block(17, 24),
-//                    Block(16, 24),
-//                    Block(15, 24),
-//                    Block(14, 24),
-//                    Block(13, 24),
-//                    Block(12, 24),
-//                    Block(11, 24),
-//                    Block(10, 24),
-//                    Block(9, 24),
-//                    Block(8, 24),
-//                    Block(7, 24),
-//                    Block(7, 23),
-//                    Block(8, 23),
-//                    Block(9, 23),
-//                    Block(10, 23),
-//                    Block(11, 23),
-//                    Block(12, 23)
-//                ),
-//                width = 890,
-//                height = 1280,
-//                blockSize = 49,
-//                matrixW = 18,
-//                matrixH = 26
-//            )
-//        )
-//    }
-//}

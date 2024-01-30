@@ -5,6 +5,7 @@ import com.timothy.searchemulator.ui.emulator.algo.SearchStrategy
 import com.timothy.searchemulator.ui.base.BaseEffect
 import com.timothy.searchemulator.ui.base.BaseEvent
 import com.timothy.searchemulator.ui.base.BaseState
+import com.timothy.searchemulator.ui.base.BaseStatus
 import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
 
 typealias Block = Pair<Int,Int>
@@ -36,10 +37,9 @@ class Contract{
         object OnBarrierRedoButtonClicked:Event()
     }
 
-
     data class State(
         //status
-        val status:Status,
+//        val status:Status,
 
         //in px
         val width:Int = 0,
@@ -68,7 +68,7 @@ class Contract{
 
     interface DrawingType
 
-    sealed class Status{
+    sealed class Status: BaseStatus{
         object Started:Status()
         object Paused:Status()
         object Idle:Status()
