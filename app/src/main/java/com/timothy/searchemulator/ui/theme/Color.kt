@@ -20,6 +20,7 @@ val ThemeColor05 = Color(0xFFDAD7CD)
 val ThemeColor055 = Color(0xFFE7E5DC)
 val ThemeColor06 = Color(0xFFFFEB3B)
 val ThemeColor07 = Color(0xFFFFDA6C)
+val ThemeColor075 = Color(0xFFFFCE3E)
 val ThemeColor08 = Color(0xFFFAF6EB)
 
 val ThemeColorPrimary = Color(0xFF3A5A40)
@@ -47,7 +48,7 @@ data class SearchingColor(
     val colorBlockBarrier: Color = ThemeColor02,
     val colorBlockPassed: Color = ThemeColor05,
     val colorBlockPath: Color = ThemeColor04,
-    val colorBlockTail: Color = ThemeColor07,
+    val colorBlockTail: Color = ThemeColor075,
 
     val buttonColors: Color = ThemeColor02,
     val buttonContentColors: Color = ThemeColor05,

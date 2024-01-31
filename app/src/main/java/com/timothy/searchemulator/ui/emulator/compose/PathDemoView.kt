@@ -354,16 +354,35 @@ fun DrawScope.drawEndPointWithOffset(offset: Offset, brickSize: Int, color: Colo
     drawUnitBlockFilledFromOffset(brickSize, offset, color)
 }
 
+//last 2 block normal color
+//then 3 alpha 60 blocks
+//then 4 alpha 25 blocks
 fun DrawScope.drawPassedBlocks(
     passed: List<Block>, brickSize: Int, color: Color, currentColor: Color
 ) {
+    val li = passed.lastIndex
     //draw passed
     passed.forEachIndexed { i, block ->
 
         drawUnitBlockFilled(
-            brickSize, block.x, block.y, if (i == passed.lastIndex) currentColor else color
+            brickSize, block.x, block.y,
+            color = color
         )
     }
+
+    for(i in maxOf(0,li-2-3-4) until passed.size ){
+        drawUnitBlockFilled(
+            brickSize, passed[i].x, passed[i].y,
+            color = when(i){
+                in li-1 .. li -> currentColor
+                in li-4 .. li-2 -> currentColor.copy(alpha = .6f)
+                in li-8 .. li-5 -> currentColor.copy(alpha = .2f)
+                else -> color
+            }
+        )
+    }
+
+
 }
 
 fun DrawScope.drawBarrierWithAnimation(
