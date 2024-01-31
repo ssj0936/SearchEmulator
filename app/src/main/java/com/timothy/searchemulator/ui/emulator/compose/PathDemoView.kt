@@ -65,8 +65,8 @@ fun BoardView(
 //    Timber.d("(BoardView) state:${state.lastMovement}")
     Box(modifier = modifier
         .fillMaxSize()
-        .pointerInput(viewModel.currentState.blockSize) {
-            dragging(blockSize = viewModel.currentState.blockSize,
+        .pointerInput(Unit) {
+            dragging(blockSizeProvider = viewModel.blockSizeProvider,
                 drawingPosition = drawingPosition,
                 onDragStart = { offset ->
                     viewModel.setEvent(Contract.Event.OnDraggingStart(offset))
@@ -74,7 +74,7 @@ fun BoardView(
                 onDragEnd = { viewModel.setEvent(Contract.Event.OnDraggingEnd) },
                 onDrag = { block -> viewModel.setEvent(Contract.Event.OnDragging(block)) })
         }
-        .pointerInput(viewModel.currentState.blockSize) {
+        .pointerInput(Unit) {
             detectTapGestures(onPress = {
                 viewModel.setEvent(Contract.Event.OnPressed(it))
             }, onTap = {
@@ -301,7 +301,7 @@ suspend fun PointerInputScope.dragging(
     onDragStart: (Offset) -> Unit,
     onDragEnd: () -> Unit,
     onDrag: (Block) -> Unit,
-    blockSize: Int,
+    blockSizeProvider: ()->Int,
     drawingPosition: MutableState<Block>
 ) {
     detectDragGestures(onDragStart = {
@@ -314,7 +314,7 @@ suspend fun PointerInputScope.dragging(
         },
 
         onDrag = { change, _ ->
-            val currentBlock = change.position.toBlock(blockSize)
+            val currentBlock = change.position.toBlock(blockSizeProvider())
             if (currentBlock != drawingPosition.value) {
                 drawingPosition.value = currentBlock
                 onDrag(drawingPosition.value)

@@ -478,4 +478,5 @@ class EmulatorViewModel @Inject constructor(
             )
         }
     }
+    val blockSizeProvider:()->Int = { currentState.blockSize }
 }
