@@ -2,13 +2,10 @@ package com.timothy.searchemulator.ui.emulator.compose
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.SnapSpec
 import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.animateOffset
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -124,13 +121,14 @@ fun CanvasPassed(
     modifier: Modifier = Modifier,
     blockSizeProvider: () -> Int,
     passedProvider: () -> List<Block>,
+    isSearchDone:()->Boolean,
     colorPassed: Color,
     colorCurrent: Color,
 ) {
     if (passedProvider().isEmpty()) return
     Timber.d("CanvasPassed")
     Canvas(modifier = modifier) {
-        drawPassedBlocks(passedProvider(), blockSizeProvider(), colorPassed, colorCurrent)
+        drawPassedBlocks(passedProvider(), blockSizeProvider(), isSearchDone, colorPassed, colorCurrent)
     }
 }
 
@@ -189,6 +187,7 @@ fun BoardCanvases(
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val status by viewModel.status.collectAsState()
 
     Timber.d("(recompose) BoardCanvas")
     Box(modifier = modifier) {
@@ -202,7 +201,8 @@ fun BoardCanvases(
             passedProvider = { state.passed },
             blockSizeProvider = { state.blockSize },
             colorPassed = colorPassed,
-            colorCurrent = colorCurrent
+            colorCurrent = colorCurrent,
+            isSearchDone = { status == Contract.Status.SearchFinish }
         )
 
         CanvasBarrier(
@@ -246,11 +246,11 @@ fun CanvasFinalPath(
 ) {
     if (finalPathProvider().isEmpty()) return
 
-    val finalPath = finalPathProvider()
+//    val finalPath = finalPathProvider()
 
     val currPath: Path = remember { Path() }
     val finalPathOffsets: List<Offset> = remember {
-        finalPath.map {
+        finalPathProvider().map {
             Offset(
                 blockSizeProvider() * it.x.toFloat() + blockSizeProvider() / 2,
                 blockSizeProvider() * it.y.toFloat() + blockSizeProvider() / 2
@@ -264,7 +264,7 @@ fun CanvasFinalPath(
     val animateIndexValue by animateIntAsState(
         targetValue = targetIndexValue,
         animationSpec = tween(
-            durationMillis = finalPath.size * animationMsPerBlock, easing = LinearEasing
+            durationMillis = finalPathOffsets.size * animationMsPerBlock, easing = LinearEasing
         ),
         label = "",
         finishedListener = { onAnimationFinish() }
@@ -358,7 +358,7 @@ fun DrawScope.drawEndPointWithOffset(offset: Offset, brickSize: Int, color: Colo
 //then 3 alpha 60 blocks
 //then 4 alpha 25 blocks
 fun DrawScope.drawPassedBlocks(
-    passed: List<Block>, brickSize: Int, color: Color, currentColor: Color
+    passed: List<Block>, brickSize: Int, isSearchDoneProvider:()->Boolean, color: Color, currentColor: Color
 ) {
     val li = passed.lastIndex
     //draw passed
@@ -369,6 +369,7 @@ fun DrawScope.drawPassedBlocks(
             color = color
         )
     }
+    if(isSearchDoneProvider()) return
 
     for(i in maxOf(0,li-2-3-4) until passed.size ){
         drawUnitBlockFilled(
@@ -381,8 +382,6 @@ fun DrawScope.drawPassedBlocks(
             }
         )
     }
-
-
 }
 
 fun DrawScope.drawBarrierWithAnimation(
