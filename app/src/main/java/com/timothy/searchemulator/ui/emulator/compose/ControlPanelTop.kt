@@ -127,41 +127,13 @@ fun ControlPanel(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PlayStateControlPanel()
-            SegmentedButtons(options = searchStrategyButtons)
+            PlayStateControlPanel(modifier = Modifier.padding(horizontal = 8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            SegmentedButtons(modifier = Modifier.padding(horizontal = 8.dp), options = searchStrategyButtons)
         }
     }
 }
-//
-//@Composable
-//fun BasicOutlinedButton(
-//    onClick: () -> Unit,
-//    iconId: Int,
-//    borderStrokeWidth: Dp = 1.dp,
-//    enabled: Boolean,
-//    color: Color
-//) {
-//    OutlinedButton(
-//        onClick = onClick,
-//        shape = CircleShape,
-//        enabled = enabled,
-//        border = ButtonDefaults.outlinedButtonBorder.copy(
-//            width = borderStrokeWidth,
-//            brush = SolidColor(color)
-//        ),
-//        contentPadding = PaddingValues(0.dp)
-//    ) {
-//        Icon(
-//            modifier = Modifier.size(16.dp),
-//            painter = painterResource(id = iconId),
-//            contentDescription = null,
-//            tint = color
-//
-//        )
-//    }
-//}
 
 @Composable
 fun SegmentedButtons(
@@ -275,7 +247,6 @@ fun PlayStateControlPanel(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 18.dp)
             .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
     ) {

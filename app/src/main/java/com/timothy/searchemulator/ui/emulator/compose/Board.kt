@@ -63,26 +63,25 @@ fun EmulatorPage(
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 ControlPanel(
                     modifier = Modifier
                         .fillMaxWidth(),
-//                    status = state.status,
-//                    currentSearchStrategyType = state.searchStrategy.getType()
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 BoardView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
                         .padding(horizontal = 12.dp),
                 )
+                Spacer(modifier = Modifier.height(8.dp))
                 BottomControlPanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp)
                 )
+                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     }
