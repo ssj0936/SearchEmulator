@@ -1,5 +1,6 @@
 package com.timothy.searchemulator.ui.emulator.compose
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,10 +12,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,49 +48,82 @@ fun EmulatorPage(
 //    val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     LaunchedEffect(key1 = Unit) {
         viewModel.effect.collect { effect ->
             snackBarEffectHandle(effect, scope, snackbarHostState)
         }
     }
-
-    Scaffold(
-        snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState)
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(24.dp)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-        ) {
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet() {
+                DrawerContent(
+                    drawerState = drawerState,
+                    coroutineScope = scope
+                )
+            }
+        },
+    ){
+        Scaffold(
+            snackbarHost = {
+                SnackbarHost(hostState = snackbarHostState)
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(24.dp)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
             ) {
-                ControlPanel(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                BoardView(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(horizontal = 12.dp),
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                BottomControlPanel(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    ControlPanel(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        drawerState = drawerState,
+                        coroutineScope = scope
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    BoardView(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(horizontal = 12.dp),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    BottomControlPanel(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp),
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DrawerContent(
+    drawerState: DrawerState,
+    coroutineScope:CoroutineScope
+){
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        Text(
+            modifier = Modifier.clickable {
+                coroutineScope.launch {
+                    drawerState.apply { if(isClosed) open() else close() }
+                }
+            },
+            text = "Test"
+        )
     }
 }
 

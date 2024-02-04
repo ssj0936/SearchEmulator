@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -41,24 +43,18 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.timothy.searchemulator.R
-import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
-import com.timothy.searchemulator.model.getMovementSpeedDelay
-import com.timothy.searchemulator.ui.emulator.Block
-import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.Contract.Event
 import com.timothy.searchemulator.ui.emulator.Contract.Status
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.emulator.algo.SearchAlgo
-import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
-import com.timothy.searchemulator.ui.emulator.algo.SearchStrategy
-import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import com.timothy.searchemulator.ui.theme.color
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 
 enum class ControlPanelButtonType {
@@ -112,13 +108,16 @@ class ToggleButtonOption(
 )
 
 val searchStrategyButtons = listOf<ToggleButtonOption>(
-    ToggleButtonOption("BFS", R.drawable.baseline_search_24, SearchAlgo.SEARCH_BFS),
-    ToggleButtonOption("DFS", R.drawable.baseline_search_24, SearchAlgo.SEARCH_DFS)
+    ToggleButtonOption("BFS", null/*R.drawable.baseline_search_24*/, SearchAlgo.SEARCH_BFS),
+    ToggleButtonOption("DFS", null/*R.drawable.baseline_search_24*/, SearchAlgo.SEARCH_DFS)
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlPanel(
     modifier: Modifier = Modifier,
+    drawerState: DrawerState,
+    coroutineScope:CoroutineScope
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -130,10 +129,47 @@ fun ControlPanel(
         ) {
             PlayStateControlPanel(modifier = Modifier.padding(horizontal = 8.dp))
             Spacer(modifier = Modifier.height(8.dp))
-            SegmentedButtons(modifier = Modifier.padding(horizontal = 8.dp), options = searchStrategyButtons)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SegmentedButtons(
+                    modifier = modifier.weight(1f),
+                    options = searchStrategyButtons
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    ControlPanelButton(
+                        data = ControlPanelButtonWrapper(
+                            title = "algo",
+                            icon = R.drawable.outline_info_24
+                        ),
+                        onClick = {
+                            coroutineScope.launch {
+                                drawerState.apply { if (isClosed) open() else close() }
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    ControlPanelButton(
+                        data = ControlPanelButtonWrapper(
+                            title = "maze",
+                            icon = R.drawable.ic_random_24
+                        ),
+                        onClick = {}
+                    )
+                }
+            }
         }
     }
 }
+
 
 @Composable
 fun SegmentedButtons(
@@ -144,10 +180,10 @@ fun SegmentedButtons(
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
     val status by viewModel.status.collectAsState()
-    val enabled = {(status == Status.Idle)}
-    var searchStrategyType by remember {mutableStateOf(viewModel.currentState.searchStrategy.getType())}
+    val enabled = { (status == Status.Idle) }
+    var searchStrategyType by remember { mutableStateOf(viewModel.currentState.searchStrategy.getType()) }
 
-    Row(modifier) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.Center) {
         options.forEachIndexed { index, toggleButtonOption ->
             val selected = (searchStrategyType == toggleButtonOption.tag)
 
@@ -199,7 +235,7 @@ fun SegmentedButtons(
             OutlinedButton(
                 modifier = buttonsModifier,
                 onClick = {
-                    with(toggleButtonOption.tag){
+                    with(toggleButtonOption.tag) {
                         viewModel.setEvent(Event.OnSearchStrategyChange(this))
                         searchStrategyType = this
                     }
@@ -336,8 +372,8 @@ fun PlayStateControlPanel(
 fun ControlPanelButton(
     modifier: Modifier = Modifier,
     data: ControlPanelButtonWrapper,
-    pressed: ()->Boolean = { false },
-    enabled: ()->Boolean = { true },
+    pressed: () -> Boolean = { false },
+    enabled: () -> Boolean = { true },
     onClick: () -> Unit = {}
 ) {
     when (data.type) {
