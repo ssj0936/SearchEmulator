@@ -4,18 +4,30 @@ import kotlin.math.ln
 
 //speed
 const val MOVEMENT_SPEED_BASE = 50L
-const val MOVEMENT_SPEED_MIN = 1
-const val MOVEMENT_SPEED_MAX = 5
-const val MOVEMENT_SPEED_STEP = 3
 const val MOVEMENT_SPEED_DEFAULT = 3
 
 //size
 const val BOARD_SIZE_DEFAULT = 1
-const val BOARD_SIZE_MIN = 1
-const val BOARD_SIZE_MAX = 3
 const val BOARD_SIZE_BASE = 18
 const val BOARD_SIZE_MULTIPLIER = 8
-const val BOARD_SIZE_STEP = 1
+
+class RangeChooserData(
+    val value:Int,
+    val displayContent:String
+)
+val boardSizeRange = listOf<RangeChooserData>(
+    RangeChooserData(1, "Normal Board"),
+    RangeChooserData(2, "Big Board"),
+    RangeChooserData(3, "Large Size"),
+)
+
+val speedRange = listOf<RangeChooserData>(
+    RangeChooserData(1, "Slowest"),
+    RangeChooserData(2, "Slow"),
+    RangeChooserData(3, "Normal"),
+    RangeChooserData(4, "Fast"),
+    RangeChooserData(5, "Fast as fxxx"),
+)
 
 //Speed Of final path animation
 const val MS_PER_PATH_BLOCK:Int = 20
@@ -26,8 +38,8 @@ private fun powOf(base:Int, pow:Int):Float{
     return r
 }
 
-fun getMovementSpeedDelay(tick:Float):Long{
-    return (MOVEMENT_SPEED_BASE / powOf(2,tick.toInt()-1)).toLong()
+fun getMovementSpeedDelay(tick:Int):Long{
+    return (MOVEMENT_SPEED_BASE / powOf(2, tick -1)).toLong()
 }
 
 fun getMovementSpeedTick(delay:Long):Float{
@@ -35,6 +47,6 @@ fun getMovementSpeedTick(delay:Long):Float{
     return ((ln(tmp) / ln(2.0))+1).toFloat()
 }
 
-fun getBoardSize(tick:Float):Int = BOARD_SIZE_BASE + (BOARD_SIZE_MULTIPLIER * (tick-1)).toInt()
-fun getBoardSizeTick(blockCount:Int):Float = (blockCount - BOARD_SIZE_BASE).toFloat()/BOARD_SIZE_MULTIPLIER +1
+fun getBoardSize(tick:Int):Int = BOARD_SIZE_BASE + (BOARD_SIZE_MULTIPLIER * (tick-1))
+fun getBoardSizeTick(blockCount:Int):Int = (blockCount - BOARD_SIZE_BASE)/BOARD_SIZE_MULTIPLIER +1
 

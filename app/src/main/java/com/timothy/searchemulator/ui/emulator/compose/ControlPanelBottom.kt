@@ -2,46 +2,52 @@ package com.timothy.searchemulator.ui.emulator.compose
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.with
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.timothy.searchemulator.R
-import com.timothy.searchemulator.model.BOARD_SIZE_MAX
-import com.timothy.searchemulator.model.BOARD_SIZE_MIN
-import com.timothy.searchemulator.model.BOARD_SIZE_STEP
-import com.timothy.searchemulator.model.MOVEMENT_SPEED_MAX
-import com.timothy.searchemulator.model.MOVEMENT_SPEED_MIN
-import com.timothy.searchemulator.model.MOVEMENT_SPEED_STEP
+import com.timothy.searchemulator.model.RangeChooserData
+import com.timothy.searchemulator.model.boardSizeRange
 import com.timothy.searchemulator.model.getBoardSizeTick
 import com.timothy.searchemulator.model.getMovementSpeedTick
+import com.timothy.searchemulator.model.speedRange
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.theme.SearchEmulatorTheme
 import com.timothy.searchemulator.ui.theme.color
+import kotlin.math.roundToInt
 
 @Composable
 fun BottomControlPanel(
@@ -50,70 +56,56 @@ fun BottomControlPanel(
 ) {
     val status by viewModel.status.collectAsState()
 
-    Box(modifier = modifier) {
-        Column {
-            RangeChooser(
-                modifier = Modifier.weight(1f),
-                enabled = { status == Contract.Status.Idle },
-                value = 5,
-                title = "size",
-                valueRange = 1..9,
-                steps = BOARD_SIZE_STEP,
-                onValueChange = {}
-            )
-            Row {
-                ValueSlideBar(
-                    modifier = Modifier.weight(1f),
-                    enabled = { status == Contract.Status.Idle },
-                    value = getBoardSizeTick(viewModel.currentState.minSideBlockCnt),
-                    title = "size",
-                    valueRange = BOARD_SIZE_MIN.toFloat()..BOARD_SIZE_MAX.toFloat(),
-                    steps = BOARD_SIZE_STEP,
-                    onValueChange = { viewModel.setEvent(Contract.Event.OnSizeSliderChange(it)) }
-                )
-
-                ValueSlideBar(
-                    modifier = Modifier.weight(1f),
-                    value = getMovementSpeedTick(viewModel.currentState.searchProcessDelay),
-                    title = "speed",
-                    valueRange = MOVEMENT_SPEED_MIN.toFloat()..MOVEMENT_SPEED_MAX.toFloat(),
-                    steps = MOVEMENT_SPEED_STEP,
-                    onValueChange = { viewModel.setEvent(Contract.Event.OnSpeedSliderChange(it)) }
-                )
-            }
-        }
+    Row(modifier = modifier) {
+        RangeChooser(
+            modifier = Modifier,
+            enabled = { status == Contract.Status.Idle },
+            value = getBoardSizeTick(viewModel.currentState.minSideBlockCnt),
+            valueRange = boardSizeRange,
+            onValueChange = { viewModel.setEvent(Contract.Event.OnSizeSliderChange(it)) }
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        RangeChooser(
+            modifier = Modifier,
+            value = getMovementSpeedTick(viewModel.currentState.searchProcessDelay).roundToInt(),
+            valueRange = speedRange,
+            onValueChange = { viewModel.setEvent(Contract.Event.OnSpeedSliderChange(it)) }
+        )
     }
 }
 
-class RangeChooserData(
-    val value:Int,
-    val displayContent:String
-)
-
-val boardSizeRange = listOf<RangeChooserData>(
-    RangeChooserData(0, "Normal Board"),
-    RangeChooserData(1, "Big Board"),
-    RangeChooserData(2, "Large Size"),
-)
-
-val speedRange = listOf<RangeChooserData>(
-    RangeChooserData(0, "Slowest"),
-    RangeChooserData(1, "Slow"),
-    RangeChooserData(2, "Normal"),
-    RangeChooserData(3, "Fast"),
-    RangeChooserData(4, "Fast as fxxx"),
-)
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun RangeChooser(
     modifier: Modifier = Modifier,
-    enabled: ()->Boolean = { true },
+    enabled: () -> Boolean = { true },
     value: Int = 0,
-    valueRange:List<RangeChooserData>,
-    onValueChange: (Int) -> Unit
-){
-    var currentValue by remember { mutableIntStateOf(value) }
+    valueRange: List<RangeChooserData>,
+    onValueChange: (Int) -> Unit,
+    textStyle: TextStyle = MaterialTheme.typography.labelLarge
+) {
+    //measure max width
+    var componentMaxWidth by remember{ mutableStateOf(0.dp) }
+    val density = LocalDensity.current
+
+    if(componentMaxWidth == 0.dp){
+        Box(modifier = Modifier.onGloballyPositioned {
+            componentMaxWidth = with(density) {
+                it.size.width.toDp()
+            }
+        }){
+            valueRange.forEach {
+                Text(
+                    text = it.displayContent,
+                    style = textStyle
+                )
+            }
+        }
+    }
+
+    //component
+    var currentIndex by remember { mutableIntStateOf(valueRange.indexOfFirst { it.value == value }) }
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -125,17 +117,30 @@ fun RangeChooser(
             tint = MaterialTheme.color.buttonColors,
             modifier = Modifier
                 .size(14.dp)
-                .alpha(if (enabled() && currentValue > valueRange.first().value) 1f else .5f)
-                .clickable((enabled() && currentValue > valueRange.first().value), onClick = {
-                    onValueChange(--currentValue)
+                .alpha(if (enabled() && currentIndex > 0) 1f else .5f)
+                .clickable((enabled() && currentIndex > 0), onClick = {
+                    --currentIndex
+                    onValueChange(valueRange[currentIndex].value)
                 })
         )
-        AnimatedContent(targetState = currentValue, label = "") { targetCount ->
-            // Make sure to use `targetCount`, not `count`.
+        AnimatedContent(
+            targetState = currentIndex,
+            label = "",
+            transitionSpec = {
+                if(targetState > initialState){//increase
+                    slideInHorizontally {width -> width/2} + fadeIn() with
+                            slideOutHorizontally {width->-width/2} + fadeOut()
+                }else{
+                    slideInHorizontally {width->-width/2} + fadeIn() with
+                            slideOutHorizontally {width->width/2} + fadeOut()
+                }.using(SizeTransform(clip = false))
+            }) { index ->
             Text(
-                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.alpha(if (enabled()) 1f else .5f).width(componentMaxWidth),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.color.buttonColors,
-                text = "$targetCount"
+                text = valueRange[index].displayContent
             )
         }
         Icon(
@@ -144,63 +149,23 @@ fun RangeChooser(
             tint = MaterialTheme.color.buttonColors,
             modifier = Modifier
                 .size(14.dp)
-                .alpha(if (enabled() && currentValue < valueRange.last().value) 1f else .5f)
-                .clickable((enabled() && currentValue < valueRange.last().value), onClick = {
-                    onValueChange(++currentValue)
+                .alpha(if (enabled() && currentIndex < valueRange.lastIndex) 1f else .5f)
+                .clickable((enabled() && currentIndex < valueRange.lastIndex), onClick = {
+                    ++currentIndex
+                    onValueChange(valueRange[currentIndex].value)
                 })
-        )
-    }
-}
-
-@Composable
-fun ValueSlideBar(
-    modifier: Modifier = Modifier,
-    enabled: ()->Boolean = { true },
-    value: Float,
-    title: String,
-    valueRange: ClosedFloatingPointRange<Float>,
-    steps: Int,
-    onValueChange: (Float) -> Unit
-) {
-    var sliderPosition by remember { mutableFloatStateOf(value) }
-
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        //title
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Slider(
-            enabled = enabled(),
-            value = sliderPosition,
-            valueRange = valueRange,
-            steps = steps,
-            onValueChange = {
-                sliderPosition = it
-                onValueChange(it)
-            },
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.color.sliderThumbColors,
-                activeTrackColor = MaterialTheme.color.sliderTrackColors,
-                inactiveTrackColor = MaterialTheme.color.sliderInactiveTrackColors
-            )
         )
     }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
 @Composable
-fun ValueSlideBarPreview(){
+fun ValueSlideBarPreview() {
     SearchEmulatorTheme {
         RangeChooser(
             modifier = Modifier,
-            enabled = {true},
-            value = 5,
+            enabled = { true },
+            value = 1,
             valueRange = boardSizeRange,
             onValueChange = {}
         )

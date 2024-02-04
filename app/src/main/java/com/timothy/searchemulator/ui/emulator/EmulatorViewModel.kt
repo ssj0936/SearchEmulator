@@ -34,12 +34,12 @@ class EmulatorViewModel @Inject constructor(
 
     override fun createInitState(): State =
         State(
-            minSideBlockCnt = getBoardSize(BOARD_SIZE_DEFAULT.toFloat()),
+            minSideBlockCnt = getBoardSize(BOARD_SIZE_DEFAULT),
             start = Block(0, 0),
             dest = Block(10, 10),
             barrier = hashSetOf(),
             searchStrategy = SearchDFS.instance,
-            searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat()),
+            searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT),
             lastMovement = StatusType.Normal
         )
 
@@ -441,7 +441,7 @@ class EmulatorViewModel @Inject constructor(
 
     }
 
-    private fun onSizeSliderChange(size: Float) {
+    private fun onSizeSliderChange(size: Int) {
         val minSideBlockCnt = getBoardSize(size)
         val blockSize = minOf(currentState.width, currentState.height) / minSideBlockCnt
         val matrixW = (currentState.width / blockSize)
@@ -457,7 +457,7 @@ class EmulatorViewModel @Inject constructor(
         }
     }
 
-    private fun onSpeedSliderChange(speed: Float) {
+    private fun onSpeedSliderChange(speed: Int) {
         setState { copy(searchProcessDelay = getMovementSpeedDelay(speed)) }
         if (currentStatus == Status.Started) {
             onSearchPause()

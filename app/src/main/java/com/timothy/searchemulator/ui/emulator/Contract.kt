@@ -20,8 +20,8 @@ class Contract{
         object OnResetBtnClick:Event()
         data class OnScreenMeasured(val widthInPx:Int, val heightInPx:Int):Event()
 
-        data class OnSizeSliderChange(val value:Float):Event()
-        data class OnSpeedSliderChange(val value:Float):Event()
+        data class OnSizeSliderChange(val value:Int):Event()
+        data class OnSpeedSliderChange(val value:Int):Event()
 
         data class OnSearchStrategyChange(val strategy: SearchAlgo):Event()
 

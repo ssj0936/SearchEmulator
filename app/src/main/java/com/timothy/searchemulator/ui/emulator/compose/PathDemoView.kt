@@ -89,7 +89,7 @@ fun BoardView(
                 )
             }
         }) {
-        Timber.d("(recompose) BoardView")
+//        Timber.d("(recompose) BoardView")
         BoardCanvases(
             modifier = Modifier.fillMaxSize(),
             colorBackground = MaterialTheme.color.colorBlockBackground,
@@ -110,7 +110,7 @@ fun CanvasBackground(
     matrixHProvider: () -> Int,
     colorBackground: Color,
 ) {
-    Timber.d("CanvasBackground")
+//    Timber.d("CanvasBackground")
     Canvas(modifier = modifier) {
         drawBackground(blockSizeProvider(), matrixWProvider(), matrixHProvider(), colorBackground)
     }
@@ -126,7 +126,7 @@ fun CanvasPassed(
     colorCurrent: Color,
 ) {
     if (passedProvider().isEmpty()) return
-    Timber.d("CanvasPassed")
+//    Timber.d("CanvasPassed")
     Canvas(modifier = modifier) {
         drawPassedBlocks(passedProvider(), blockSizeProvider(), isSearchDone, colorPassed, colorCurrent)
     }
@@ -141,7 +141,7 @@ fun CanvasBarrier(
     matrixHProvider: () -> Int,
     colorBarrier: Color
 ) {
-    Timber.d("CanvasBarrier")
+//    Timber.d("CanvasBarrier")
     Canvas(modifier = modifier) {
         drawBarrier(
             barrier().toList(),
@@ -161,7 +161,7 @@ fun CanvasEndPoints(
     color: Color,
     isAnimationNeed: () -> Boolean,
 ) {
-    Timber.d("CanvasEndPoints???")
+//    Timber.d("CanvasEndPoints???")
 
     val offset by animateOffsetAsState(
         targetValue = nodeProvider().toOffset(blockSizeProvider()),
@@ -189,7 +189,7 @@ fun BoardCanvases(
     val state by viewModel.state.collectAsState()
     val status by viewModel.status.collectAsState()
 
-    Timber.d("(recompose) BoardCanvas")
+//    Timber.d("(recompose) BoardCanvas")
     Box(modifier = modifier) {
         CanvasBackground(
             blockSizeProvider = { state.blockSize },
@@ -246,7 +246,6 @@ fun CanvasFinalPath(
 ) {
     if (finalPathProvider().isEmpty()) return
 
-//    val finalPath = finalPathProvider()
 
     val currPath: Path = remember { Path() }
     val finalPathOffsets: List<Offset> = remember {
