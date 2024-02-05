@@ -2,6 +2,13 @@ package com.timothy.searchemulator.model
 
 import kotlin.math.ln
 
+val dirs = arrayOf(
+    intArrayOf(0, -1),//up
+    intArrayOf(1, 0),//right
+    intArrayOf(0, 1),//bottom
+    intArrayOf(-1, 0),//left
+)
+
 //speed
 const val MOVEMENT_SPEED_BASE = 50L
 const val MOVEMENT_SPEED_DEFAULT = 3

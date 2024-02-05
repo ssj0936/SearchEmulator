@@ -31,6 +31,7 @@ class Contract{
         object OnDraggingEnd:Event()
         data class OnPressed(val offset: Offset):Event()
         data class OnTap(val offset: Offset):Event()
+        object OnMazeGeneratePressed:Event()
 
         object OnBarrierClearButtonClicked:Event()
         object OnBarrierUndoButtonClicked:Event()

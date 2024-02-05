@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.timothy.searchemulator.R
 import com.timothy.searchemulator.ui.emulator.Contract.Event
 import com.timothy.searchemulator.ui.emulator.Contract.Status
@@ -117,7 +118,8 @@ val searchStrategyButtons = listOf<ToggleButtonOption>(
 fun ControlPanel(
     modifier: Modifier = Modifier,
     drawerState: DrawerState,
-    coroutineScope:CoroutineScope
+    coroutineScope:CoroutineScope,
+    viewModel: EmulatorViewModel = hiltViewModel()
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -162,7 +164,7 @@ fun ControlPanel(
                             title = "maze",
                             icon = R.drawable.ic_random_24
                         ),
-                        onClick = {}
+                        onClick = { viewModel.setEvent(Event.OnMazeGeneratePressed)}
                     )
                 }
             }

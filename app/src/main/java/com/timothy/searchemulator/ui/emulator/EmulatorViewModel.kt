@@ -6,6 +6,7 @@ import com.timothy.searchemulator.model.BOARD_SIZE_DEFAULT
 import com.timothy.searchemulator.ui.emulator.algo.MovementType
 import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
 import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
+import com.timothy.searchemulator.model.dirs
 import com.timothy.searchemulator.model.getBoardSize
 import com.timothy.searchemulator.model.getMovementSpeedDelay
 import com.timothy.searchemulator.ui.base.BaseViewModel
@@ -23,10 +24,11 @@ import com.timothy.searchemulator.ui.emulator.MovementType.MOVE_DEST
 import com.timothy.searchemulator.ui.emulator.MovementType.MOVE_START
 
 import com.timothy.searchemulator.ui.emulator.Contract.*
+import java.util.LinkedList
 
 @HiltViewModel
 class EmulatorViewModel @Inject constructor(
-    private val movementRecordManager: MovementRecordManager
+    private val movementRecordManager: MovementRecordManager,
 ) :
     BaseViewModel<State, Status, Event, Effect>() {
 
@@ -112,6 +114,10 @@ class EmulatorViewModel @Inject constructor(
             is Event.OnBarrierRedoButtonClicked -> {
                 onBarrierRedoButtonClicked()
             }
+
+            is Event.OnMazeGeneratePressed -> {
+                onMazeGeneratePressed()
+            }
         }
     }
 
@@ -133,8 +139,7 @@ class EmulatorViewModel @Inject constructor(
                 )
             }
             setStatus(Status.Idle)
-        }
-        else {
+        } else {
             setState {
                 copy(
                     barrier = barrier.toHashSet().apply { add(block) }
@@ -478,5 +483,56 @@ class EmulatorViewModel @Inject constructor(
             )
         }
     }
-    val blockSizeProvider:()->Int = { currentState.blockSize }
+
+    private fun onMazeGeneratePressed() {
+        val mazeBarrier = MazeGeneratorImpl()
+            .setWidth(currentState.matrixW)
+            .setHeight(currentState.matrixH)
+            .setIsSurroundedByWalls(true/*(0..1).random() == 1*/) //random
+            .generateWalls()
+
+        setState { copy(barrier = mazeBarrier, lastMovement = StatusType.MazeGen) }
+
+        if (currentState.start != null && mazeBarrier.contains(currentState.start)) {
+            val newStart = mazeBarrier.getNearestPathBlock(
+                currentState.start!!,
+                currentState.matrixW,
+                currentState.matrixH
+            ) ?: throw IllegalArgumentException("no place to put start")
+            setState { copy(start = newStart) }
+        }
+
+        if (currentState.dest != null && mazeBarrier.contains(currentState.dest)) {
+            val newDest = mazeBarrier.getNearestPathBlock(
+                currentState.dest!!,
+                currentState.matrixW,
+                currentState.matrixH
+            ) ?: throw IllegalArgumentException("no place to put dest")
+            setState { copy(dest = newDest) }
+        }
+    }
+
+    private fun HashSet<Block>.getNearestPathBlock(center: Block, width: Int, height: Int): Block? {
+        val queue = LinkedList<Block>().apply { offer(center) }
+        val visited = hashSetOf(center)
+
+        while (queue.isNotEmpty()) {
+            val pop = queue.poll()!!
+
+            if (!this.contains(pop))
+                return pop
+
+            for (dir in dirs) {
+                val x = pop.x + dir[0]
+                val y = pop.y + dir[1]
+                if (x in 0 until width && y in 0 until height && !visited.contains(Block(x, y))) {
+                    queue.offer(Block(x, y))
+                }
+            }
+        }
+
+        return null
+    }
+
+    val blockSizeProvider: () -> Int = { currentState.blockSize }
 }

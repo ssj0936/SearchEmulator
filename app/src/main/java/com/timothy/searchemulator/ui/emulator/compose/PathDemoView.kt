@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.SnapSpec
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -139,16 +140,26 @@ fun CanvasBarrier(
     blockSizeProvider: () -> Int,
     matrixWProvider: () -> Int,
     matrixHProvider: () -> Int,
+    isAnimationNeed: () -> Boolean,
     colorBarrier: Color
 ) {
-//    Timber.d("CanvasBarrier")
+    val alpha = remember{ Animatable(0f) }
+
+    LaunchedEffect(key1 = barrier()){
+        if(isAnimationNeed()) {
+            alpha.snapTo(0f)
+            alpha.animateTo(1f, animationSpec = tween(300))
+        }
+    }
+
     Canvas(modifier = modifier) {
         drawBarrier(
             barrier().toList(),
             matrixWProvider(),
             matrixHProvider(),
             blockSizeProvider(),
-            colorBarrier
+            colorBarrier,
+            alpha.value
         )
     }
 }
@@ -210,7 +221,8 @@ fun BoardCanvases(
             blockSizeProvider = { state.blockSize },
             matrixWProvider = { state.matrixW },
             matrixHProvider = { state.matrixH },
-            colorBarrier = colorBarrier
+            colorBarrier = colorBarrier,
+            isAnimationNeed = { state.lastMovement is StatusType.MazeGen }
         )
 
         CanvasEndPoints(
@@ -321,25 +333,25 @@ suspend fun PointerInputScope.dragging(
         })
 }
 
-fun Modifier.pointerInputCombine(
-    key1: Any?, blocks: List<suspend PointerInputScope.() -> Unit>, index: Int = 0
-): Modifier {
-    return when (index) {
-        blocks.size -> {
-            Modifier
-        }
-
-        else -> {
-            run {
-                then(pointerInput(key1 = key1, blocks[index])).then(
-                    pointerInputCombine(
-                        key1, blocks, index + 1
-                    )
-                )
-            }
-        }
-    }
-}
+//fun Modifier.pointerInputCombine(
+//    key1: Any?, blocks: List<suspend PointerInputScope.() -> Unit>, index: Int = 0
+//): Modifier {
+//    return when (index) {
+//        blocks.size -> {
+//            Modifier
+//        }
+//
+//        else -> {
+//            run {
+//                then(pointerInput(key1 = key1, blocks[index])).then(
+//                    pointerInputCombine(
+//                        key1, blocks, index + 1
+//                    )
+//                )
+//            }
+//        }
+//    }
+//}
 
 fun DrawScope.drawBackground(brickSize: Int, matrixW: Int, matrixH: Int, color: Color) {
     (0 until matrixW).forEach { x ->
@@ -383,59 +395,61 @@ fun DrawScope.drawPassedBlocks(
     }
 }
 
-fun DrawScope.drawBarrierWithAnimation(
-    barrierShow: List<Block>,
-    barrierHide: List<Block>,
-    others: List<Block>,
-    matrixW: Int,
-    matrixH: Int,
-    brickSize: Int,
-    color: Color,
-    bias: Float
-) {
-
-    //draw passed
-    others.forEach {
-        if (it.first in 0 until matrixW && it.second in 0 until matrixH) drawUnitBlockFilled(
-            brickSize, it.first, it.second, color
-        )
-    }
-
-    barrierShow.forEach { block ->
-        val absoluteOffset = Offset(brickSize * block.x.toFloat(), brickSize * block.y.toFloat())
-        val padding = brickSize * 0.05f
-        val outerSize = brickSize - padding * 2
-
-        drawRect(
-            color = color.copy(alpha = bias),
-            topLeft = absoluteOffset + Offset(padding, padding),
-            size = Size(outerSize, outerSize),
-            style = Fill
-        )
-    }
-    Timber.d("1 - bias:${1 - bias}")
-    barrierHide.forEach { block ->
-        val absoluteOffset = Offset(brickSize * block.x.toFloat(), brickSize * block.y.toFloat())
-        val padding = brickSize * 0.05f
-        val outerSize = brickSize - padding * 2
-
-        drawRect(
-            color = color.copy(alpha = 1 - bias),
-            topLeft = absoluteOffset + Offset(padding, padding),
-            size = Size(outerSize, outerSize),
-            style = Fill
-        )
-    }
-}
+//fun DrawScope.drawBarrierWithAnimation(
+//    barrierShow: List<Block>,
+//    barrierHide: List<Block>,
+//    others: List<Block>,
+//    matrixW: Int,
+//    matrixH: Int,
+//    brickSize: Int,
+//    color: Color,
+//    bias: Float
+//) {
+//
+//    //draw passed
+//    others.forEach {
+//        if (it.first in 0 until matrixW && it.second in 0 until matrixH) drawUnitBlockFilled(
+//            brickSize, it.first, it.second, color
+//        )
+//    }
+//
+//    barrierShow.forEach { block ->
+//        val absoluteOffset = Offset(brickSize * block.x.toFloat(), brickSize * block.y.toFloat())
+//        val padding = brickSize * 0.05f
+//        val outerSize = brickSize - padding * 2
+//
+//        drawRect(
+//            color = color.copy(alpha = bias),
+//            topLeft = absoluteOffset + Offset(padding, padding),
+//            size = Size(outerSize, outerSize),
+//            style = Fill
+//        )
+//    }
+//    Timber.d("1 - bias:${1 - bias}")
+//    barrierHide.forEach { block ->
+//        val absoluteOffset = Offset(brickSize * block.x.toFloat(), brickSize * block.y.toFloat())
+//        val padding = brickSize * 0.05f
+//        val outerSize = brickSize - padding * 2
+//
+//        drawRect(
+//            color = color.copy(alpha = 1 - bias),
+//            topLeft = absoluteOffset + Offset(padding, padding),
+//            size = Size(outerSize, outerSize),
+//            style = Fill
+//        )
+//    }
+//}
 
 fun DrawScope.drawBarrier(
-    barrier: List<Block>, matrixW: Int, matrixH: Int, brickSize: Int, color: Color
+    barrier: List<Block>, matrixW: Int, matrixH: Int, brickSize: Int, color: Color, alpha:Float
 ) {
     //draw passed
     barrier.forEach {
-        if (it.first in 0 until matrixW && it.second in 0 until matrixH) drawUnitBlockFilled(
-            brickSize, it.first, it.second, color
-        )
+        if (it.first in 0 until matrixW && it.second in 0 until matrixH) {
+            drawUnitBlockFilled(
+                brickSize, it.first, it.second, color, alpha
+            )
+        }
     }
 }
 
@@ -455,7 +469,7 @@ fun DrawScope.drawUnitBlockOutline(
 }
 
 fun DrawScope.drawUnitBlockFilled(
-    brickSize: Int, x: Int, y: Int, color: Color = Color.Black
+    brickSize: Int, x: Int, y: Int, color: Color = Color.Black, alpha:Float = 1f
 ) {
     val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
     val padding = brickSize * 0.05f
@@ -465,26 +479,25 @@ fun DrawScope.drawUnitBlockFilled(
         color = color,
         topLeft = absoluteOffset + Offset(padding, padding),
         size = Size(outerSize, outerSize),
-        style = Fill
+        style = Fill,
+        alpha = alpha
     )
 }
 
-fun DrawScope.drawUnitBlockFilled(
-    brickSize: Int, x: Int, y: Int, color: Color = Color.Black, bias: Float
-) {
-    val absoluteOffset = Offset(brickSize * x.toFloat(), bias + brickSize * y.toFloat())
-    val padding = brickSize * 0.05f
-    val outerSize = brickSize - padding * 2
-
-    drawRect(
-        color = color.copy(alpha = 1 - bias),
-        topLeft = absoluteOffset + Offset(padding, padding),
-        size = Size(outerSize, outerSize),
-        style = Fill
-    )
-
-
-}
+//fun DrawScope.drawUnitBlockFilled(
+//    brickSize: Int, x: Int, y: Int, color: Color = Color.Black, bias: Float
+//) {
+//    val absoluteOffset = Offset(brickSize * x.toFloat(), bias + brickSize * y.toFloat())
+//    val padding = brickSize * 0.05f
+//    val outerSize = brickSize - padding * 2
+//
+//    drawRect(
+//        color = color.copy(alpha = 1 - bias),
+//        topLeft = absoluteOffset + Offset(padding, padding),
+//        size = Size(outerSize, outerSize),
+//        style = Fill
+//    )
+//}
 
 fun DrawScope.drawUnitBlockFilledFromOffset(
     brickSize: Int, offset: Offset, color: Color = Color.Black

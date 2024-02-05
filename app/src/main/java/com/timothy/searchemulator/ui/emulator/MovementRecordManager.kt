@@ -22,6 +22,7 @@ sealed class StatusType{
     object RedoEndPoint:StatusType(),EndPointTimeMachine
     data class UndoBarrier(override val diff:List<Block>):StatusType(), BarrierTimeMachine
     data class RedoBarrier(override val diff:List<Block>):StatusType(), BarrierTimeMachine
+    object MazeGen:StatusType()
 //    NORMAL, UNDO, REDO
 }
 
