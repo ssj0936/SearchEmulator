@@ -117,7 +117,7 @@ val searchStrategyButtons = listOf<ToggleButtonOption>(
 @Composable
 fun ControlPanel(
     modifier: Modifier = Modifier,
-    drawerState: DrawerState,
+    bottomSheetLauncher: ()->Unit,
     coroutineScope:CoroutineScope,
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
@@ -154,7 +154,7 @@ fun ControlPanel(
                         ),
                         onClick = {
                             coroutineScope.launch {
-                                drawerState.apply { if (isClosed) open() else close() }
+                                bottomSheetLauncher()
                             }
                         }
                     )
