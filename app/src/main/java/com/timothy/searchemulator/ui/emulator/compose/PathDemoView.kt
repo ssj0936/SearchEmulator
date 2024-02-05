@@ -143,7 +143,7 @@ fun CanvasBarrier(
     isAnimationNeed: () -> Boolean,
     colorBarrier: Color
 ) {
-    val alpha = remember{ Animatable(0f) }
+    val alpha = remember{ Animatable(1f) }
 
     LaunchedEffect(key1 = barrier()){
         if(isAnimationNeed()) {
