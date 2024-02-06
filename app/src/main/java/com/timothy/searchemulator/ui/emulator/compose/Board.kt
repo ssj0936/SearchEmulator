@@ -1,6 +1,5 @@
 package com.timothy.searchemulator.ui.emulator.compose
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
-import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -57,28 +55,12 @@ fun EmulatorPage(
             snackBarEffectHandle(effect, scope, snackbarHostState)
         }
     }
-//    ModalBo(
-//        drawerState = drawerState,
-//        drawerContent = {
-//            ModalDrawerSheet() {
-//                DrawerContent(
-//                    drawerState = drawerState,
-//                    coroutineScope = scope
-//                )
-//            }
-//        },
-//    ){
     Scaffold(
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
         }
     ) { paddingValues ->
-//        LaunchedEffect(key1 = showBottomSheet){
-//            scope.launch{sheetState.expand()}
-//        }
-
         if (showBottomSheet) {
-
             ModalBottomSheet(
                 onDismissRequest = {
                     showBottomSheet = false
@@ -138,25 +120,6 @@ fun EmulatorPage(
         }
     }
 
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DrawerContent(
-    drawerState: DrawerState,
-    coroutineScope: CoroutineScope
-) {
-    Box(modifier = Modifier.fillMaxSize()) {
-
-        Text(
-            modifier = Modifier.clickable {
-                coroutineScope.launch {
-                    drawerState.apply { if (isClosed) open() else close() }
-                }
-            },
-            text = "Test"
-        )
-    }
 }
 
 fun snackBarEffectHandle(

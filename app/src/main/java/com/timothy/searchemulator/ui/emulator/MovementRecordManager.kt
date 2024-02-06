@@ -3,76 +3,72 @@ package com.timothy.searchemulator.ui.emulator
 import java.util.LinkedList
 import javax.inject.Inject
 
-enum class MovementType{
-    MOVE_START, MOVE_DEST, DRAWING_BARRIER
+enum class OperationType {
+    NORMAL,
+    UNDO_START, REDO_START,
+    UNDO_DEST, REDO_DEST,
+    UNDO_BARRIERS, REDO_BARRIERS,
+    GENERATE_MAZE
 }
 
-enum class EditType{
-    EDIT_NORMAL, EDIT_UNDO, EDIT_REDO
+sealed class OperationUnit {
+    data class MoveStart(var from: Block? = null, var to: Block? = null) : OperationUnit()
+    data class MoveDest(var from: Block? = null, var to: Block? = null) : OperationUnit()
+    data class DrawBarrier(var drawPath: List<Block> = emptyList()) : OperationUnit()
+    data class GenerateMaze(
+        var barriersDiff: List<Block> = emptyList(),
+        var startFrom: Block? = null,
+        var startTo: Block? = null,
+        var destFrom: Block? = null,
+        var destTo: Block? = null
+    ) : OperationUnit()
 }
 
-sealed class StatusType{
-    interface BarrierTimeMachine{
-        val diff:List<Block>
-    }
-    interface EndPointTimeMachine
-
-    object Normal:StatusType()
-    object UndoEndPoint:StatusType(),EndPointTimeMachine
-    object RedoEndPoint:StatusType(),EndPointTimeMachine
-    data class UndoBarrier(override val diff:List<Block>):StatusType(), BarrierTimeMachine
-    data class RedoBarrier(override val diff:List<Block>):StatusType(), BarrierTimeMachine
-    object MazeGen:StatusType()
-//    NORMAL, UNDO, REDO
-}
-
-sealed class Movement{
-    data class MoveStart(val from:Block? = null, val to:Block):Movement()
-    data class MoveDest(val from:Block, val to:Block):Movement()
-    data class DrawBarrier(val drawPath:List<Block>):Movement()
-}
-
-interface MovementRecordManager{
+interface MovementRecordManager {
     fun onCreate()
     fun onDestroy()
 
-    fun recordMovement(movement:Movement)
-    fun getLastMovement():Movement?
+    fun recordMovement(operationUnit: OperationUnit)
+    fun getLastMovement(): OperationUnit?
 
-    fun hasUndoMovement():Boolean
-    fun hasRedoMovement():Boolean
+    fun hasUndoMovement(): Boolean
+    fun hasRedoMovement(): Boolean
 
-    fun undoLastMovement():Movement?
-    fun redoLastMovement():Movement?
+    fun undoLastMovement(): OperationUnit?
+    fun redoLastMovement(): OperationUnit?
 
-    fun getCurrentMovement():MutableList<Block>
-    fun startRecording(type: MovementType):MovementRecordManager
-    fun record(block:Block):MovementRecordManager
-    fun record(blocks:List<Block>):MovementRecordManager
-    fun stopRecording():MovementRecordManager
+    fun getCurrentMovement(): MutableList<Block>
+    fun startRecording(operationUnit: OperationUnit): MovementRecordManager
+    fun finishRecording(): MovementRecordManager
+    fun record(block: Block): MovementRecordManager
+    fun record(blocks: Collection<Block>): MovementRecordManager
+
 }
 
-class MovementRecordManagerImpl @Inject constructor():MovementRecordManager {
-    private val barrierDrawingUndoBuffer: LinkedList<Movement> = LinkedList()
-    private val barrierDrawingRedoBuffer: LinkedList<Movement> = LinkedList()
+class MovementRecordManagerImpl @Inject constructor() : MovementRecordManager {
+    private val barrierDrawingUndoBuffer: LinkedList<OperationUnit> = LinkedList()
+    private val barrierDrawingRedoBuffer: LinkedList<OperationUnit> = LinkedList()
     private val currentRecordingMovement = mutableListOf<Block>()
-    private lateinit var currentMovementType:MovementType
+
+    //    private lateinit var currentMovementType:MovementType
+    private lateinit var mOperationUnit: OperationUnit
     private var isRecording = false
 
     override fun onCreate() {
         barrierDrawingUndoBuffer.clear()
         barrierDrawingRedoBuffer.clear()
     }
+
     override fun onDestroy() {
         barrierDrawingUndoBuffer.clear()
         barrierDrawingRedoBuffer.clear()
     }
 
-    override fun recordMovement(movement: Movement) {
-        barrierDrawingUndoBuffer.push(movement)
+    override fun recordMovement(operationUnit: OperationUnit) {
+        barrierDrawingUndoBuffer.push(operationUnit)
     }
 
-    override fun getLastMovement(): Movement? {
+    override fun getLastMovement(): OperationUnit? {
         return barrierDrawingUndoBuffer.peek()
     }
 
@@ -80,33 +76,34 @@ class MovementRecordManagerImpl @Inject constructor():MovementRecordManager {
 
     override fun hasRedoMovement(): Boolean = barrierDrawingRedoBuffer.isNotEmpty()
 
-    override fun undoLastMovement(): Movement? {
+    override fun undoLastMovement(): OperationUnit? {
         val lastMovement = barrierDrawingUndoBuffer.pop()
         barrierDrawingRedoBuffer.push(lastMovement)
         return lastMovement
     }
 
-    override fun redoLastMovement(): Movement? {
+    override fun redoLastMovement(): OperationUnit? {
         val lastUndoMovement = barrierDrawingRedoBuffer.pop()
         barrierDrawingUndoBuffer.push(lastUndoMovement)
         return lastUndoMovement
     }
 
-    override fun startRecording(type: MovementType):MovementRecordManager {
-        if(!isRecording) {
+    override fun startRecording(operationUnit: OperationUnit): MovementRecordManager {
+        if (!isRecording) {
             isRecording = true
-            currentMovementType = type
+//            currentMovementType = type
+            mOperationUnit = operationUnit
             currentRecordingMovement.clear()
         }
         return this
     }
 
-    override fun record(block: Block):MovementRecordManager {
+    override fun record(block: Block): MovementRecordManager {
         currentRecordingMovement.add(block)
         return this
     }
 
-    override fun record(blocks: List<Block>): MovementRecordManager {
+    override fun record(blocks: Collection<Block>): MovementRecordManager {
         currentRecordingMovement.addAll(blocks)
         return this
     }
@@ -115,31 +112,36 @@ class MovementRecordManagerImpl @Inject constructor():MovementRecordManager {
         return currentRecordingMovement
     }
 
-    override fun stopRecording():MovementRecordManager {
-        if(isRecording) {
-
+    override fun finishRecording(): MovementRecordManager {
+        if (isRecording) {
             isRecording = false
-            barrierDrawingUndoBuffer.push(
-                when (currentMovementType) {
-                    MovementType.MOVE_START -> {
-                        Movement.MoveStart(
-                            currentRecordingMovement.first(),
-                            currentRecordingMovement.last()
-                        )
-                    }
 
-                    MovementType.MOVE_DEST -> {
-                        Movement.MoveDest(
-                            currentRecordingMovement.first(),
-                            currentRecordingMovement.last()
-                        )
-                    }
-
-                    MovementType.DRAWING_BARRIER -> {
-                        Movement.DrawBarrier(currentRecordingMovement.toMutableList())
-                    }
+            when (mOperationUnit) {
+                is OperationUnit.MoveStart -> {
+                    (mOperationUnit as OperationUnit.MoveStart).from =
+                        currentRecordingMovement.first()
+                    (mOperationUnit as OperationUnit.MoveStart).to = currentRecordingMovement.last()
                 }
-            )
+
+                is OperationUnit.MoveDest -> {
+                    (mOperationUnit as OperationUnit.MoveDest).from =
+                        currentRecordingMovement.first()
+                    (mOperationUnit as OperationUnit.MoveDest).to = currentRecordingMovement.last()
+                }
+
+                is OperationUnit.DrawBarrier -> {
+                    (mOperationUnit as OperationUnit.DrawBarrier).drawPath =
+                        currentRecordingMovement.toList()
+                }
+
+                is OperationUnit.GenerateMaze -> {
+                    (mOperationUnit as OperationUnit.GenerateMaze).barriersDiff =
+                        currentRecordingMovement.toList()
+                }
+
+                else -> {}
+            }
+            barrierDrawingUndoBuffer.push(mOperationUnit)
 
             barrierDrawingRedoBuffer.clear()
         }

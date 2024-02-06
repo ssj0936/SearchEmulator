@@ -1,10 +1,10 @@
 package com.timothy.searchemulator.ui.emulator.compose
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.SnapSpec
 import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -44,11 +44,10 @@ import com.timothy.searchemulator.ui.base.toOffset
 import com.timothy.searchemulator.ui.emulator.Block
 import com.timothy.searchemulator.ui.emulator.Contract
 import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
-import com.timothy.searchemulator.ui.emulator.StatusType
+import com.timothy.searchemulator.ui.emulator.OperationType
 import com.timothy.searchemulator.ui.emulator.x
 import com.timothy.searchemulator.ui.emulator.y
 import com.timothy.searchemulator.ui.theme.color
-import timber.log.Timber
 
 @Composable
 fun BoardView(
@@ -122,14 +121,20 @@ fun CanvasPassed(
     modifier: Modifier = Modifier,
     blockSizeProvider: () -> Int,
     passedProvider: () -> List<Block>,
-    isSearchDone:()->Boolean,
+    isSearchDone: () -> Boolean,
     colorPassed: Color,
     colorCurrent: Color,
 ) {
     if (passedProvider().isEmpty()) return
 //    Timber.d("CanvasPassed")
     Canvas(modifier = modifier) {
-        drawPassedBlocks(passedProvider(), blockSizeProvider(), isSearchDone, colorPassed, colorCurrent)
+        drawPassedBlocks(
+            passedProvider(),
+            blockSizeProvider(),
+            isSearchDone,
+            colorPassed,
+            colorCurrent
+        )
     }
 }
 
@@ -143,10 +148,10 @@ fun CanvasBarrier(
     isAnimationNeed: () -> Boolean,
     colorBarrier: Color
 ) {
-    val alpha = remember{ Animatable(1f) }
+    val alpha = remember { Animatable(1f) }
 
-    LaunchedEffect(key1 = barrier()){
-        if(isAnimationNeed()) {
+    LaunchedEffect(key1 = barrier()) {
+        if (isAnimationNeed()) {
             alpha.snapTo(0f)
             alpha.animateTo(1f, animationSpec = tween(300))
         }
@@ -203,14 +208,14 @@ fun BoardCanvases(
 //    Timber.d("(recompose) BoardCanvas")
     Box(modifier = modifier) {
         CanvasBackground(
-            blockSizeProvider = { state.blockSize },
+            blockSizeProvider = { state.blockSizePx },
             matrixWProvider = { state.matrixW },
             matrixHProvider = { state.matrixH },
             colorBackground = colorBackground
         )
         CanvasPassed(
             passedProvider = { state.passed },
-            blockSizeProvider = { state.blockSize },
+            blockSizeProvider = { state.blockSizePx },
             colorPassed = colorPassed,
             colorCurrent = colorCurrent,
             isSearchDone = { status == Contract.Status.SearchFinish }
@@ -218,28 +223,34 @@ fun BoardCanvases(
 
         CanvasBarrier(
             barrier = { state.barrier },
-            blockSizeProvider = { state.blockSize },
+            blockSizeProvider = { state.blockSizePx },
             matrixWProvider = { state.matrixW },
             matrixHProvider = { state.matrixH },
             colorBarrier = colorBarrier,
-            isAnimationNeed = { state.lastMovement is StatusType.MazeGen }
+            isAnimationNeed = { state.lastOperationType == OperationType.GENERATE_MAZE }
         )
 
         CanvasEndPoints(
-            blockSizeProvider = { state.blockSize }, nodeProvider = { state.start!! },
+            blockSizeProvider = { state.blockSizePx }, nodeProvider = { state.start!! },
             color = colorStartPoint,
-            isAnimationNeed = { state.lastMovement is StatusType.EndPointTimeMachine }
+            isAnimationNeed = { state.lastOperationType == OperationType.UNDO_START
+                    || state.lastOperationType == OperationType.REDO_START
+                    || state.lastOperationType == OperationType.GENERATE_MAZE
+            }
         )
 
         CanvasEndPoints(
-            blockSizeProvider = { state.blockSize }, nodeProvider = { state.dest!! },
+            blockSizeProvider = { state.blockSizePx }, nodeProvider = { state.dest!! },
             color = colorDestPoint,
-            isAnimationNeed = { state.lastMovement is StatusType.EndPointTimeMachine }
+            isAnimationNeed = { state.lastOperationType == OperationType.UNDO_DEST
+                    || state.lastOperationType == OperationType.REDO_DEST
+                    || state.lastOperationType == OperationType.GENERATE_MAZE
+            }
         )
 
         CanvasFinalPath(
             modifier = Modifier.fillMaxSize(),
-            blockSizeProvider = { state.blockSize },
+            blockSizeProvider = { state.blockSizePx },
             finalPathProvider = { state.path },
             pathColor = MaterialTheme.color.colorBlockPath,
         )
@@ -280,11 +291,11 @@ fun CanvasFinalPath(
         label = "",
         finishedListener = { onAnimationFinish() }
     )
-    var currentIndexValue :Int =  remember{ -1 }
+    var currentIndexValue: Int = remember { -1 }
     //animation Path
     Canvas(modifier = modifier) {
-        if(currentIndexValue < animateIndexValue){
-            for(i in currentIndexValue+1 .. animateIndexValue ){
+        if (currentIndexValue < animateIndexValue) {
+            for (i in currentIndexValue + 1..animateIndexValue) {
                 if (i == 0)
                     currPath.moveTo(finalPathOffsets.first().x, finalPathOffsets.first().y)
                 else
@@ -312,7 +323,7 @@ suspend fun PointerInputScope.dragging(
     onDragStart: (Offset) -> Unit,
     onDragEnd: () -> Unit,
     onDrag: (Block) -> Unit,
-    blockSizeProvider: ()->Int,
+    blockSizeProvider: () -> Int,
     drawingPosition: MutableState<Block>
 ) {
     detectDragGestures(onDragStart = {
@@ -369,7 +380,11 @@ fun DrawScope.drawEndPointWithOffset(offset: Offset, brickSize: Int, color: Colo
 //then 3 alpha 60 blocks
 //then 4 alpha 25 blocks
 fun DrawScope.drawPassedBlocks(
-    passed: List<Block>, brickSize: Int, isSearchDoneProvider:()->Boolean, color: Color, currentColor: Color
+    passed: List<Block>,
+    brickSize: Int,
+    isSearchDoneProvider: () -> Boolean,
+    color: Color,
+    currentColor: Color
 ) {
     val li = passed.lastIndex
     //draw passed
@@ -380,15 +395,15 @@ fun DrawScope.drawPassedBlocks(
             color = color
         )
     }
-    if(isSearchDoneProvider()) return
+    if (isSearchDoneProvider()) return
 
-    for(i in maxOf(0,li-2-3-4) until passed.size ){
+    for (i in maxOf(0, li - 2 - 3 - 4) until passed.size) {
         drawUnitBlockFilled(
             brickSize, passed[i].x, passed[i].y,
-            color = when(i){
-                in li-1 .. li -> currentColor
-                in li-4 .. li-2 -> currentColor.copy(alpha = .6f)
-                in li-8 .. li-5 -> currentColor.copy(alpha = .2f)
+            color = when (i) {
+                in li - 1..li -> currentColor
+                in li - 4..li - 2 -> currentColor.copy(alpha = .6f)
+                in li - 8..li - 5 -> currentColor.copy(alpha = .2f)
                 else -> color
             }
         )
@@ -441,7 +456,7 @@ fun DrawScope.drawPassedBlocks(
 //}
 
 fun DrawScope.drawBarrier(
-    barrier: List<Block>, matrixW: Int, matrixH: Int, brickSize: Int, color: Color, alpha:Float
+    barrier: List<Block>, matrixW: Int, matrixH: Int, brickSize: Int, color: Color, alpha: Float
 ) {
     //draw passed
     barrier.forEach {
@@ -469,7 +484,7 @@ fun DrawScope.drawUnitBlockOutline(
 }
 
 fun DrawScope.drawUnitBlockFilled(
-    brickSize: Int, x: Int, y: Int, color: Color = Color.Black, alpha:Float = 1f
+    brickSize: Int, x: Int, y: Int, color: Color = Color.Black, alpha: Float = 1f
 ) {
     val absoluteOffset = Offset(brickSize * x.toFloat(), brickSize * y.toFloat())
     val padding = brickSize * 0.05f

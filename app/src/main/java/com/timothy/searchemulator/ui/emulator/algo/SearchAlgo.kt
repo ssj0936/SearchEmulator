@@ -51,8 +51,8 @@ abstract class SearchStrategy {
         this.dest = block
     }
 
-    fun setBarriers(barriers: List<Block>): SearchStrategy = apply {
-        this.barriers = barriers
+    fun setBarriers(barriers: HashSet<Block>): SearchStrategy = apply {
+        this.barriers = barriers.toList()
     }
 
     open fun init(): SearchStrategy = apply {

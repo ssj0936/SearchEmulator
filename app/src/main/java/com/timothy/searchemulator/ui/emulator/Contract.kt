@@ -43,9 +43,9 @@ class Contract{
 //        val status:Status,
 
         //in px
-        val width:Int = 0,
-        val height:Int = 0,
-        val blockSize:Int = 0,
+        val widthPx:Int = 0,
+        val heightPx:Int = 0,
+        val blockSizePx:Int = 0,
 
         //in block
         val minSideBlockCnt:Int,
@@ -62,7 +62,7 @@ class Contract{
         //final path
         val path:List<Block> = emptyList(),
 
-        val lastMovement: StatusType = StatusType.Normal,
+        val lastOperationType: OperationType = OperationType.NORMAL,
         //animation
         val searchProcessDelay:Long,
     ):BaseState
@@ -84,8 +84,8 @@ class Contract{
     sealed class Effect:BaseEffect{
         data class OnSearchFinish(val isSuccess:Boolean):Effect()
 //        data class OnStartPosChange(val block:Block):Effect()
-        data class OnUndoEvent(val movement:Movement):Effect()
-        data class OnRedoEvent(val movement:Movement):Effect()
+        data class OnUndoEvent(val operationUnit:OperationUnit):Effect()
+        data class OnRedoEvent(val operationUnit:OperationUnit):Effect()
         object OnBarrierCleaned:Effect()
     }
 

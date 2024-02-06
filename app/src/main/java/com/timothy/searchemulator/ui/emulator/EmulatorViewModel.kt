@@ -19,10 +19,6 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
-import com.timothy.searchemulator.ui.emulator.MovementType.*
-import com.timothy.searchemulator.ui.emulator.MovementType.MOVE_DEST
-import com.timothy.searchemulator.ui.emulator.MovementType.MOVE_START
-
 import com.timothy.searchemulator.ui.emulator.Contract.*
 import java.util.LinkedList
 
@@ -42,7 +38,7 @@ class EmulatorViewModel @Inject constructor(
             barrier = hashSetOf(),
             searchStrategy = SearchDFS.instance,
             searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT),
-            lastMovement = StatusType.Normal
+            lastOperationType = OperationType.NORMAL
         )
 
     override fun createInitStatus(): Status = Status.Idle
@@ -66,11 +62,11 @@ class EmulatorViewModel @Inject constructor(
             }
 
             is Event.OnSizeSliderChange -> {
-                onSizeSliderChange(event.value)
+                onBoardSizeChange(event.value)
             }
 
             is Event.OnSpeedSliderChange -> {
-                onSpeedSliderChange(event.value)
+                onSearchSpeedChange(event.value)
             }
 
             is Event.OnSearchStrategyChange -> {
@@ -90,7 +86,7 @@ class EmulatorViewModel @Inject constructor(
 
             is Event.OnDragging -> {
                 if (currentStatus !is DrawingType) return
-                onBarrierDragging(event.block)
+                onDragging(event.block)
             }
 
             is Event.OnPressed -> {
@@ -126,11 +122,11 @@ class EmulatorViewModel @Inject constructor(
     }
 
     private fun onTap(offset: Offset) {
-        val block = offset.toBlock(currentState.blockSize)
+        val block = offset.toBlock(currentState.blockSizePx)
         if (block == currentState.start || block == currentState.dest) return
 
         movementRecordManager.record(block)
-        movementRecordManager.stopRecording()
+        movementRecordManager.finishRecording()
 
         if (currentState.barrier.contains(block)) {
             setState {
@@ -155,13 +151,14 @@ class EmulatorViewModel @Inject constructor(
             movementRecordManager.record(currentState.start!!)
         else if (currentStatus == Status.DestDragging)
             movementRecordManager.record(currentState.dest!!)
-        movementRecordManager.stopRecording()
+        movementRecordManager.finishRecording()
 
         setStatus(Status.Idle)
     }
 
     private fun onDraggingStart(offset: Offset) {
-        val newStatus = when (offset.toBlock(currentState.blockSize)) {
+        //define current status rely on pointed Block
+        val newStatus = when (offset.toBlock(currentState.blockSizePx)) {
             currentState.start -> Status.StartDragging
             currentState.dest -> Status.DestDragging
             else -> Status.BarrierDrawing
@@ -170,10 +167,13 @@ class EmulatorViewModel @Inject constructor(
 
         //MovementRecordManager init recording
         movementRecordManager.startRecording(
-            type = when (newStatus) {
-                Status.StartDragging -> MOVE_START
-                Status.DestDragging -> MOVE_DEST
-                else -> DRAWING_BARRIER
+            operationUnit = when (newStatus) {
+                Status.StartDragging -> OperationUnit.MoveStart()
+                Status.DestDragging -> OperationUnit.MoveDest()
+                Status.BarrierDrawing -> OperationUnit.DrawBarrier()
+                else -> {
+                    throw IllegalArgumentException("dragging in inappropriate status:$newStatus")
+                }
             }
         )
 
@@ -183,12 +183,12 @@ class EmulatorViewModel @Inject constructor(
             movementRecordManager.record(currentState.dest!!)
 
         setState {
-            copy(lastMovement = StatusType.Normal)
+            copy(lastOperationType = OperationType.NORMAL)
         }
         setStatus(newStatus)
     }
 
-    private fun onBarrierDragging(block: Block) {
+    private fun onDragging(block: Block) {
         if (!block.isValidBlock) return
 
         when (currentStatus) {
@@ -219,9 +219,9 @@ class EmulatorViewModel @Inject constructor(
     private fun onBarrierClearButtonClicked() {
         if (currentState.barrier.isEmpty()) return
 
-        movementRecordManager.startRecording(DRAWING_BARRIER)
+        movementRecordManager.startRecording(operationUnit = OperationUnit.DrawBarrier())
             .record(currentState.barrier.toList())
-            .stopRecording()
+            .finishRecording()
 
         setState { copy(barrier = hashSetOf()) }
 //        setEffect(Effect.OnBarrierCleaned)
@@ -229,19 +229,30 @@ class EmulatorViewModel @Inject constructor(
 
     private fun onBarrierUndoButtonClicked() {
         if (!movementRecordManager.hasUndoMovement()) return
-        val movement = movementRecordManager.undoLastMovement() ?: return
-        when (movement) {
-            is Movement.MoveStart -> {
-                setState { copy(start = movement.from, lastMovement = StatusType.UndoEndPoint) }
+        val lastOperation = movementRecordManager.undoLastMovement() ?: return
+
+        when (lastOperation) {
+            is OperationUnit.MoveStart -> {
+                setState {
+                    copy(
+                        start = lastOperation.from,
+                        lastOperationType = OperationType.UNDO_START
+                    )
+                }
             }
 
-            is Movement.MoveDest -> {
-                setState { copy(dest = movement.from, lastMovement = StatusType.UndoEndPoint) }
+            is OperationUnit.MoveDest -> {
+                setState {
+                    copy(
+                        dest = lastOperation.from,
+                        lastOperationType = OperationType.UNDO_DEST
+                    )
+                }
             }
 
-            is Movement.DrawBarrier -> {
+            is OperationUnit.DrawBarrier -> {
                 val currentBarrier = currentState.barrier.toHashSet()
-                movement.drawPath.reversed().forEach { block ->
+                lastOperation.drawPath.reversed().forEach { block ->
                     if (currentBarrier.contains(block))
                         currentBarrier.remove(block)
                     else
@@ -250,7 +261,25 @@ class EmulatorViewModel @Inject constructor(
                 setState {
                     copy(
                         barrier = currentBarrier,
-                        lastMovement = StatusType.UndoBarrier(movement.drawPath)
+                        lastOperationType = OperationType.UNDO_BARRIERS
+                    )
+                }
+            }
+
+            is OperationUnit.GenerateMaze -> {
+                val currentBarrier = currentState.barrier.toHashSet()
+                lastOperation.barriersDiff.reversed().forEach { block ->
+                    if (currentBarrier.contains(block))
+                        currentBarrier.remove(block)
+                    else
+                        currentBarrier.add(block)
+                }
+                setState {
+                    copy(
+                        barrier = currentBarrier,
+                        start = lastOperation.startFrom,
+                        dest = lastOperation.destFrom,
+                        lastOperationType = OperationType.GENERATE_MAZE
                     )
                 }
             }
@@ -258,25 +287,36 @@ class EmulatorViewModel @Inject constructor(
             else -> {/*throw IllegalStateException("no movement to undo")*/
             }
         }
-        setEffect(Effect.OnUndoEvent(movement = movement))
+        setEffect(Effect.OnUndoEvent(operationUnit = lastOperation))
 
     }
 
     private fun onBarrierRedoButtonClicked() {
         if (!movementRecordManager.hasRedoMovement()) return
-        val movement = movementRecordManager.redoLastMovement() ?: return
-        when (movement) {
-            is Movement.MoveStart -> {
-                setState { copy(start = movement.to, lastMovement = StatusType.RedoEndPoint) }
+        val lastOperation = movementRecordManager.redoLastMovement() ?: return
+
+        when (lastOperation) {
+            is OperationUnit.MoveStart -> {
+                setState {
+                    copy(
+                        start = lastOperation.to,
+                        lastOperationType = OperationType.REDO_START
+                    )
+                }
             }
 
-            is Movement.MoveDest -> {
-                setState { copy(dest = movement.to, lastMovement = StatusType.RedoEndPoint) }
+            is OperationUnit.MoveDest -> {
+                setState {
+                    copy(
+                        dest = lastOperation.to,
+                        lastOperationType = OperationType.REDO_DEST
+                    )
+                }
             }
 
-            is Movement.DrawBarrier -> {
+            is OperationUnit.DrawBarrier -> {
                 val currentBarrier = currentState.barrier.toHashSet()
-                movement.drawPath.forEach { block ->
+                lastOperation.drawPath.forEach { block ->
                     if (currentBarrier.contains(block))
                         currentBarrier.remove(block)
                     else
@@ -285,7 +325,25 @@ class EmulatorViewModel @Inject constructor(
                 setState {
                     copy(
                         barrier = currentBarrier,
-                        lastMovement = StatusType.RedoBarrier(movement.drawPath)
+                        lastOperationType = OperationType.REDO_BARRIERS
+                    )
+                }
+            }
+
+            is OperationUnit.GenerateMaze -> {
+                val currentBarrier = currentState.barrier.toHashSet()
+                lastOperation.barriersDiff.forEach { block ->
+                    if (currentBarrier.contains(block))
+                        currentBarrier.remove(block)
+                    else
+                        currentBarrier.add(block)
+                }
+                setState {
+                    copy(
+                        barrier = currentBarrier,
+                        start = lastOperation.startTo,
+                        dest = lastOperation.destTo,
+                        lastOperationType = OperationType.GENERATE_MAZE
                     )
                 }
             }
@@ -293,17 +351,16 @@ class EmulatorViewModel @Inject constructor(
             else -> {/*throw IllegalStateException("no movement to redo")*/
             }
         }
-        setEffect(Effect.OnRedoEvent(movement = movement))
+        setEffect(Effect.OnRedoEvent(operationUnit = lastOperation))
 
     }
 
+    /*
+    * determine whether this block out of the range of board
+    */
     private val Block.isValidBlock: Boolean
-        get() = isValidBlock(currentState.matrixW, currentState.matrixH)
-
-    private fun Block.isValidBlock(w: Int, h: Int): Boolean {
-        return this.first in 0 until w
-                && this.second in 0 until h
-    }
+        get() = (this.x in 0 until currentState.matrixW
+                && this.y in 0 until currentState.matrixH)
 
     private fun onScreenMeasured(height: Int, width: Int) {
         val blockSize = minOf(width, height) / currentState.minSideBlockCnt
@@ -312,9 +369,9 @@ class EmulatorViewModel @Inject constructor(
 
         setState {
             copy(
-                width = width,
-                height = height,
-                blockSize = blockSize,
+                widthPx = width,
+                heightPx = height,
+                blockSizePx = blockSize,
                 matrixW = matrixW,
                 matrixH = matrixH,
             )
@@ -360,7 +417,7 @@ class EmulatorViewModel @Inject constructor(
                 .setSizeH(sizeH)
                 .setStart(start)
                 .setDest(dest)
-                .setBarriers(barrier.toList())
+                .setBarriers(barrier)
                 .init()
                 .search(
                     delayBetweenSteps = currentState.searchProcessDelay,
@@ -368,10 +425,7 @@ class EmulatorViewModel @Inject constructor(
                     onProcess = { movementType, block ->
                         onSearchProcessStep(movementType, block)
                     },
-
-                    onPause = {
-                        Timber.d("onPause")
-                    },
+                    onPause = {},
                     onFinish = { isFound, path ->
                         onSearchFinish(isFound, path)
                     }
@@ -390,22 +444,13 @@ class EmulatorViewModel @Inject constructor(
         } else {
             onSearchLaunch()
         }
-        setState {
-            copy(
-                path = emptyList()
-            )
-        }
+        setState { copy(path = emptyList()) }
         setStatus(Status.Started)
     }
 
     private fun onSearchFinish(isFound: Boolean, path: List<Block>?) {
-        setState {
-            copy(
-                path = path ?: emptyList()
-            )
-        }
+        setState { copy(path = path ?: emptyList()) }
         setStatus(Status.SearchFinish)
-
         setEffect(Effect.OnSearchFinish(isFound))
     }
 
@@ -427,7 +472,6 @@ class EmulatorViewModel @Inject constructor(
         }
     }
 
-
     private fun onPauseButtonClick() {
         onSearchPause()
         setStatus(Status.Paused)
@@ -446,23 +490,23 @@ class EmulatorViewModel @Inject constructor(
 
     }
 
-    private fun onSizeSliderChange(size: Int) {
+    private fun onBoardSizeChange(size: Int) {
         val minSideBlockCnt = getBoardSize(size)
-        val blockSize = minOf(currentState.width, currentState.height) / minSideBlockCnt
-        val matrixW = (currentState.width / blockSize)
-        val matrixH = (currentState.height / blockSize)
+        val blockSize = minOf(currentState.widthPx, currentState.heightPx) / minSideBlockCnt
+        val matrixW = (currentState.widthPx / blockSize)
+        val matrixH = (currentState.heightPx / blockSize)
 
         setState {
             copy(
                 minSideBlockCnt = minSideBlockCnt,
-                blockSize = blockSize,
+                blockSizePx = blockSize,
                 matrixW = matrixW,
                 matrixH = matrixH,
             )
         }
     }
 
-    private fun onSpeedSliderChange(speed: Int) {
+    private fun onSearchSpeedChange(speed: Int) {
         setState { copy(searchProcessDelay = getMovementSpeedDelay(speed)) }
         if (currentStatus == Status.Started) {
             onSearchPause()
@@ -488,27 +532,51 @@ class EmulatorViewModel @Inject constructor(
         val mazeBarrier = MazeGeneratorImpl()
             .setWidth(currentState.matrixW)
             .setHeight(currentState.matrixH)
-            .setIsSurroundedByWalls(true/*(0..1).random() == 1*/) //random
-            .generateWalls()
+            .setIsSurroundedByBarriers(true/*(0..1).random() == 1*/) //random
+            .generateBarriers()
 
-        setState { copy(barrier = mazeBarrier, lastMovement = StatusType.MazeGen) }
 
-        if (currentState.start != null && mazeBarrier.contains(currentState.start)) {
-            val newStart = mazeBarrier.getNearestPathBlock(
+        //XOR for getting diff
+        val barriersDiff = hashSetOf<Block>().apply {
+            addAll(currentState.barrier.filter { !mazeBarrier.contains(it) })
+            addAll(mazeBarrier.filter { !currentState.barrier.contains(it) })
+        }
+
+        val newStart = if (currentState.start != null && mazeBarrier.contains(currentState.start)) {
+            mazeBarrier.getNearestPathBlock(
                 currentState.start!!,
                 currentState.matrixW,
                 currentState.matrixH
-            ) ?: throw IllegalArgumentException("no place to put start")
-            setState { copy(start = newStart) }
+            )?: throw IllegalArgumentException("no place to put start")
+        } else {
+            currentState.start
         }
 
-        if (currentState.dest != null && mazeBarrier.contains(currentState.dest)) {
-            val newDest = mazeBarrier.getNearestPathBlock(
+        val newDest = if (currentState.dest != null && mazeBarrier.contains(currentState.dest)) {
+            mazeBarrier.getNearestPathBlock(
                 currentState.dest!!,
                 currentState.matrixW,
                 currentState.matrixH
             ) ?: throw IllegalArgumentException("no place to put dest")
-            setState { copy(dest = newDest) }
+        } else {
+            currentState.dest
+        }
+
+        movementRecordManager.startRecording(
+            OperationUnit.GenerateMaze(
+                startFrom = currentState.start,
+                startTo = newStart,
+                destFrom = currentState.dest,
+                destTo = newDest
+            )
+        ).record(barriersDiff).finishRecording()
+
+        //state update
+        setState { copy(
+            barrier = mazeBarrier,
+            start = newStart,
+            dest = newDest,
+            lastOperationType = OperationType.GENERATE_MAZE)
         }
     }
 
@@ -530,9 +598,8 @@ class EmulatorViewModel @Inject constructor(
                 }
             }
         }
-
         return null
     }
 
-    val blockSizeProvider: () -> Int = { currentState.blockSize }
+    val blockSizeProvider: () -> Int = { currentState.blockSizePx }
 }

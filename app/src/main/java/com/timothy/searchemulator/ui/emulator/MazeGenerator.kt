@@ -2,39 +2,36 @@ package com.timothy.searchemulator.ui.emulator
 
 import com.timothy.searchemulator.model.dirs
 
-interface MazeGenerator<T> {
-    fun setWidth(width: Int): MazeGenerator<T>
-    fun setHeight(height: Int): MazeGenerator<T>
-    fun setIsSurroundedByWalls(isSurroundedByWalls: Boolean): MazeGenerator<T>
-    fun generateWalls(): T
-}
+abstract class MazeGenerator<T> {
+    protected var width: Int = 0
+    protected var height: Int = 0
+    protected var isSurroundedByWalls = true
 
-class MazeGeneratorImpl : MazeGenerator<HashSet<Block>> {
-    private var width: Int = 0
-    private var height: Int = 0
-    private var isSurroundedByWalls = true
-
-    override fun setWidth(width: Int): MazeGenerator<HashSet<Block>> {
+    fun setWidth(width: Int): MazeGenerator<T>{
         this.width = width
         return this
     }
 
-    override fun setHeight(height: Int): MazeGenerator<HashSet<Block>> {
+    fun setHeight(height: Int): MazeGenerator<T>{
         this.height = height
         return this
     }
 
-    override fun setIsSurroundedByWalls(isSurroundedByWalls: Boolean): MazeGenerator<HashSet<Block>> {
+    fun setIsSurroundedByBarriers(isSurroundedByWalls: Boolean): MazeGenerator<T>{
         this.isSurroundedByWalls = isSurroundedByWalls
         return this
     }
+
+    abstract fun generateBarriers(): T
+}
+
+class MazeGeneratorImpl : MazeGenerator<HashSet<Block>>() {
 
     private val UNVISITED = -1
     private val PATH = 0
     private val WALL = 1
 
-    override fun generateWalls(): HashSet<Block> {
-//        val mazeWalls =hashSetOf<Block>()
+    override fun generateBarriers(): HashSet<Block> {
         val mazeWalls = Array(width) { IntArray(height) { UNVISITED } }
         val blockCnt = width * height
 
