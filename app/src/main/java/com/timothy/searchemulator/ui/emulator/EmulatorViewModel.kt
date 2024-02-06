@@ -2,7 +2,9 @@ package com.timothy.searchemulator.ui.emulator
 
 import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.viewModelScope
+import com.timothy.searchemulator.model.AlgoDescriptionRepository
 import com.timothy.searchemulator.model.BOARD_SIZE_DEFAULT
+import com.timothy.searchemulator.model.Description
 import com.timothy.searchemulator.ui.emulator.algo.MovementType
 import com.timothy.searchemulator.ui.emulator.algo.SearchBFS
 import com.timothy.searchemulator.model.MOVEMENT_SPEED_DEFAULT
@@ -20,11 +22,14 @@ import timber.log.Timber
 import javax.inject.Inject
 
 import com.timothy.searchemulator.ui.emulator.Contract.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import java.util.LinkedList
 
 @HiltViewModel
 class EmulatorViewModel @Inject constructor(
     private val movementRecordManager: MovementRecordManager,
+    private val descriptionRepository: AlgoDescriptionRepository
 ) :
     BaseViewModel<State, Status, Event, Effect>() {
 
@@ -547,7 +552,7 @@ class EmulatorViewModel @Inject constructor(
                 currentState.start!!,
                 currentState.matrixW,
                 currentState.matrixH
-            )?: throw IllegalArgumentException("no place to put start")
+            ) ?: throw IllegalArgumentException("no place to put start")
         } else {
             currentState.start
         }
@@ -572,11 +577,13 @@ class EmulatorViewModel @Inject constructor(
         ).record(barriersDiff).finishRecording()
 
         //state update
-        setState { copy(
-            barrier = mazeBarrier,
-            start = newStart,
-            dest = newDest,
-            lastOperationType = OperationType.GENERATE_MAZE)
+        setState {
+            copy(
+                barrier = mazeBarrier,
+                start = newStart,
+                dest = newDest,
+                lastOperationType = OperationType.GENERATE_MAZE
+            )
         }
     }
 
@@ -600,6 +607,11 @@ class EmulatorViewModel @Inject constructor(
         }
         return null
     }
+
+    suspend fun getAlgoDescription(): Description = viewModelScope.async(Dispatchers.IO) {
+        descriptionRepository.getDescriptions(currentState.searchStrategy.getType())
+    }.await()
+
 
     val blockSizeProvider: () -> Int = { currentState.blockSizePx }
 }
