@@ -9,7 +9,8 @@ import javax.inject.Inject
 
 class Description(
     val bigTitle: String,
-    val descriptionSets: List<DescriptionUnit>
+    val descriptionSets: List<DescriptionUnit>,
+    val referenceUrl: String,
 )
 
 data class DescriptionUnit(
@@ -38,7 +39,8 @@ class AlgoDescriptionRepository @Inject constructor(
                             title = applicationContext.resources.getString(R.string.algo_bfs_title_complexity),
                             descriptions = listOf(applicationContext.resources.getString(R.string.algo_bfs_complexity))
                         )
-                    )
+                    ),
+                    referenceUrl = applicationContext.resources.getString(R.string.algo_bfs_ref_url)
                 )
             }
 
@@ -54,7 +56,8 @@ class AlgoDescriptionRepository @Inject constructor(
                             title = applicationContext.resources.getString(R.string.algo_dfs_title_complexity),
                             descriptions = listOf(applicationContext.resources.getString(R.string.algo_dfs_complexity))
                         )
-                    )
+                    ),
+                    referenceUrl = applicationContext.resources.getString(R.string.algo_dfs_ref_url)
                 )
             }
         }

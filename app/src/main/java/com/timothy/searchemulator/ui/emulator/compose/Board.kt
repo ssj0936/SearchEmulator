@@ -1,8 +1,11 @@
 package com.timothy.searchemulator.ui.emulator.compose
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -37,7 +40,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -74,7 +84,7 @@ fun EmulatorPage(
         }
     ) { paddingValues ->
         BottomSheetView(
-            isShow = {showBottomSheet},
+            isShow = { showBottomSheet },
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState,
             scope = scope
@@ -120,16 +130,16 @@ fun EmulatorPage(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BottomSheetView(
-    isShow:()->Boolean,
+    isShow: () -> Boolean,
     onDismissRequest: () -> Unit,
     sheetState: SheetState,
     scope: CoroutineScope,
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
-    if(!isShow()) return
-
+    if (!isShow()) return
+    val context = LocalContext.current
     val scrollState: ScrollState = rememberScrollState()
-    var description by remember{ mutableStateOf<Description?>(null) }
+    var description by remember { mutableStateOf<Description?>(null) }
     val animationValue = remember { Animatable(0f) }
     SideEffect {
         description = null
@@ -164,7 +174,7 @@ fun BottomSheetView(
                 )
             }
 
-            description?.let {algoDesc->
+            description?.let { algoDesc ->
                 Column(
                     modifier = Modifier
                         .verticalScroll(scrollState)
@@ -174,28 +184,48 @@ fun BottomSheetView(
                         .offset {
                             IntOffset(0, (50 * animationValue.value).toInt())
                         }
-                ){
+                ) {
                     Text(
                         text = algoDesc.bigTitle,
                         style = MaterialTheme.typography.headlineLarge
                     )
 
-                    algoDesc.descriptionSets.forEach{descriptionUnit ->
+                    algoDesc.descriptionSets.forEach { descriptionUnit ->
                         Spacer(modifier = Modifier.height(18.dp))
-                        descriptionUnit.title?.let {unitTitle->
+                        descriptionUnit.title?.let { unitTitle ->
                             Text(
                                 text = unitTitle,
                                 style = MaterialTheme.typography.titleLarge
                             )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
-                        descriptionUnit.descriptions.forEach { description->
+                        descriptionUnit.descriptions.forEach { description ->
                             Text(
                                 text = description,
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.height(18.dp))
+                    val annotatedString = buildAnnotatedString {
+                        append("Reference : ")
+                        withStyle(
+                            style = SpanStyle(
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontStyle = FontStyle.Italic,
+                                textDecoration = TextDecoration.Underline
+                            )
+                        ) {
+                            append(algoDesc.referenceUrl)
+                        }
+                    }
+
+                    Text(
+                        text = annotatedString,
+                        modifier = Modifier.clickable {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(algoDesc.referenceUrl)))
+                        }
+                    )
                 }
             }
         }
