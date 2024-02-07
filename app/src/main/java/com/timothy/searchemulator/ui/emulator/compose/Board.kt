@@ -80,7 +80,6 @@ fun EmulatorPage(
             scope = scope
         )
 
-
         Box(
             modifier = Modifier
                 .fillMaxSize()

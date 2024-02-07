@@ -1,11 +1,13 @@
 package com.timothy.searchemulator.ui.emulator
 
 import com.timothy.searchemulator.model.dirs
+import timber.log.Timber
 
 abstract class MazeGenerator<T> {
     protected var width: Int = 0
     protected var height: Int = 0
     protected var isSurroundedByWalls = true
+    protected var wallDensityPercentage:Int = 100
 
     fun setWidth(width: Int): MazeGenerator<T>{
         this.width = width
@@ -19,6 +21,11 @@ abstract class MazeGenerator<T> {
 
     fun setIsSurroundedByBarriers(isSurroundedByWalls: Boolean): MazeGenerator<T>{
         this.isSurroundedByWalls = isSurroundedByWalls
+        return this
+    }
+
+    fun setWallDensity(percentage: Int): MazeGenerator<T>{
+        this.wallDensityPercentage = percentage
         return this
     }
 
@@ -86,7 +93,7 @@ class MazeGeneratorImpl : MazeGenerator<HashSet<Block>>() {
     }
 
     //reduce some walls for preventing one-path maze
-    private fun isWallRandom(percent:Int = 90) = (0 until 100).random()<percent
+    private fun isWallRandom() = (0 until 100).random()<wallDensityPercentage
 
     private fun Array<IntArray>.toWallSet(): HashSet<Block> {
         val result = hashSetOf<Block>()

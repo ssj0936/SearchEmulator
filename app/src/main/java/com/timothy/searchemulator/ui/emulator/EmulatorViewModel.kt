@@ -379,6 +379,8 @@ class EmulatorViewModel @Inject constructor(
                 blockSizePx = blockSize,
                 matrixW = matrixW,
                 matrixH = matrixH,
+                start = Block(0,0),
+                dest = Block(matrixW-1,matrixH-1)
             )
         }
     }
@@ -538,6 +540,7 @@ class EmulatorViewModel @Inject constructor(
             .setWidth(currentState.matrixW)
             .setHeight(currentState.matrixH)
             .setIsSurroundedByBarriers(true/*(0..1).random() == 1*/) //random
+            .setWallDensity(intArrayOf(75,80,85,90).random())
             .generateBarriers()
 
 
