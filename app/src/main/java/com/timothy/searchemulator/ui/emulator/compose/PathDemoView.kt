@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,7 @@ import com.timothy.searchemulator.ui.emulator.EmulatorViewModel
 import com.timothy.searchemulator.ui.emulator.OperationType
 import com.timothy.searchemulator.ui.emulator.x
 import com.timothy.searchemulator.ui.emulator.y
+import com.timothy.searchemulator.ui.theme.LightColorScheme
 import com.timothy.searchemulator.ui.theme.color
 
 @Composable
@@ -233,18 +235,20 @@ fun BoardCanvases(
         CanvasEndPoints(
             blockSizeProvider = { state.blockSizePx }, nodeProvider = { state.start!! },
             color = colorStartPoint,
-            isAnimationNeed = { state.lastOperationType == OperationType.UNDO_START
-                    || state.lastOperationType == OperationType.REDO_START
-                    || state.lastOperationType == OperationType.GENERATE_MAZE
+            isAnimationNeed = {
+                state.lastOperationType == OperationType.UNDO_START
+                        || state.lastOperationType == OperationType.REDO_START
+                        || state.lastOperationType == OperationType.GENERATE_MAZE
             }
         )
 
         CanvasEndPoints(
             blockSizeProvider = { state.blockSizePx }, nodeProvider = { state.dest!! },
             color = colorDestPoint,
-            isAnimationNeed = { state.lastOperationType == OperationType.UNDO_DEST
-                    || state.lastOperationType == OperationType.REDO_DEST
-                    || state.lastOperationType == OperationType.GENERATE_MAZE
+            isAnimationNeed = {
+                state.lastOperationType == OperationType.UNDO_DEST
+                        || state.lastOperationType == OperationType.REDO_DEST
+                        || state.lastOperationType == OperationType.GENERATE_MAZE
             }
         )
 
@@ -365,6 +369,13 @@ suspend fun PointerInputScope.dragging(
 //}
 
 fun DrawScope.drawBackground(brickSize: Int, matrixW: Int, matrixH: Int, color: Color) {
+    //background
+    drawRect(
+        color = LightColorScheme.background,
+        topLeft = Offset.Zero,
+        size = Size(matrixW.toFloat() * brickSize, matrixH.toFloat() * brickSize)
+    )
+    //Blocks
     (0 until matrixW).forEach { x ->
         (0 until matrixH).forEach { y ->
             drawUnitBlockOutline(brickSize, x, y, color)

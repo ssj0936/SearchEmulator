@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,15 +22,10 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CardElevation
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -105,8 +101,11 @@ val controlPanelButtonWrappers = listOf(
         "Clean",
         R.drawable.baseline_cleaning_services_24
     ),
-
+    ControlPanelButtonWrapper(
+        title = "maze",
+        icon = R.drawable.ic_random_24
     )
+)
 
 //search strategy single-choice buttons
 class ToggleButtonOption(
@@ -152,8 +151,6 @@ fun DrawingPanel(
     val buttonModifier = Modifier.padding(horizontal = 6.dp)
     Box(
         modifier = modifier.width(IntrinsicSize.Max),
-//        shape = RoundedCornerShape(10.dp),
-//        border = BorderStroke(width = 1.dp, color = MaterialTheme.color.cardBorderColor),
     ) {
         Column(modifier = Modifier) {
             Row(
@@ -193,10 +190,8 @@ fun DrawingPanel(
 
                 ControlPanelButton(
                     modifier = buttonModifier,
-                    data = ControlPanelButtonWrapper(
-                        title = "maze",
-                        icon = R.drawable.ic_random_24
-                    ),
+                    enabled = { status == Status.Idle },
+                    data = controlPanelButtonWrappers[6],
                     onClick = { viewModel.setEvent(Event.OnMazeGeneratePressed) }
                 )
             }
@@ -215,8 +210,6 @@ fun ControlPanelCard(
 
     Box(
         modifier = modifier.width(IntrinsicSize.Max),
-//        shape = RoundedCornerShape(10.dp),
-//        border = BorderStroke(width = 1.dp, color = MaterialTheme.color.cardBorderColor),
     ) {
         Column(modifier = Modifier) {
             Row(
@@ -254,7 +247,9 @@ fun ControlPanelCard(
             Spacer(modifier = Modifier.weight(1f))
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.Bottom,
             ) {
@@ -293,7 +288,9 @@ fun ControlPanel(
             modifier = Modifier.height(IntrinsicSize.Max),
         ) {
             ControlPanelCard(
-                modifier = Modifier.fillMaxHeight().padding(horizontal = 12.dp),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 12.dp),
                 bottomSheetLauncher = bottomSheetLauncher,
                 coroutineScope = coroutineScope
             )
@@ -313,9 +310,10 @@ fun ControlPanel(
                         .align(Alignment.CenterVertically),
                 )
             }
-//            Spacer(modifier = Modifier.weight(1f))
             DrawingPanel(
-                modifier = Modifier.fillMaxHeight().padding(horizontal = 12.dp),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 12.dp),
             )
         }
     }
@@ -420,101 +418,6 @@ fun SegmentedButtons(
             }
         }
     }
-
-}
-
-@Composable
-fun PlayStateControlPanel(
-    modifier: Modifier = Modifier,
-    viewModel: EmulatorViewModel = hiltViewModel()
-) {
-    val status by viewModel.status.collectAsState()
-
-    Row(
-        modifier = modifier
-            .height(IntrinsicSize.Min),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-
-        val buttonModifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
-
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            //start
-            ControlPanelButton(
-                modifier = buttonModifier,
-                data = controlPanelButtonWrappers[0],
-                enabled = { (status == Status.Idle) || (status == Status.Paused) },
-                pressed = { status == Status.Started },
-                onClick = { viewModel.setEvent(Event.OnSearchBtnClick) }
-            )
-
-            //pause
-            ControlPanelButton(
-                modifier = buttonModifier,
-                data = controlPanelButtonWrappers[1],
-                enabled = { status == Status.Started },
-                pressed = { status == Status.Idle },
-                onClick = { viewModel.setEvent(Event.OnPauseBtnClick) }
-            )
-
-            //stop
-            ControlPanelButton(
-                modifier = buttonModifier,
-                data = controlPanelButtonWrappers[2],
-                enabled = { (status == Status.Started) || (status == Status.SearchFinish) || (status == Status.Paused) },
-                onClick = { viewModel.setEvent(Event.OnResetBtnClick) }
-            )
-        }
-
-        with(MaterialTheme.color.buttonContentColors) {
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .size(4.dp)
-                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                    .drawWithContent {
-                        drawContent()
-                        drawCircle(
-                            color = this@with,
-                            radius = (4 / 2).dp.toPx()
-                        )
-                    }
-            )
-        }
-
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            //undo
-            ControlPanelButton(
-                modifier = buttonModifier,
-                data = controlPanelButtonWrappers[3],
-                enabled = { status == Status.Idle },
-                onClick = { viewModel.setEvent(Event.OnBarrierUndoButtonClicked) }
-            )
-
-            //redo
-            ControlPanelButton(
-                modifier = buttonModifier,
-                data = controlPanelButtonWrappers[4],
-                enabled = { status == Status.Idle },
-                onClick = { viewModel.setEvent(Event.OnBarrierRedoButtonClicked) }
-            )
-
-            //clean
-            ControlPanelButton(
-                modifier = buttonModifier,
-                data = controlPanelButtonWrappers[5],
-                enabled = { status == Status.Idle },
-                onClick = { viewModel.setEvent(Event.OnBarrierClearButtonClicked) }
-            )
-        }
-    }
-
 }
 
 @Composable
@@ -530,7 +433,7 @@ fun ControlPanelButton(
             Box(
                 modifier = modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .alpha(if (enabled()) 1f else .5f)
+                    .alpha(if (enabled()) 1f else if(isSystemInDarkTheme()) .35f else .5f)
                     .clickable(enabled(), onClick = onClick)
                     .padding(horizontal = 4.dp, vertical = 8.dp)
             ) {
@@ -571,22 +474,3 @@ fun Modifier.ifThen(condition: Boolean, modifier: Modifier.() -> Modifier): Modi
         this
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun GreetingPreviewTop() {
-//    SearchEmulatorTheme {
-//        ControlPanel(
-//            state = Contract.State(
-//                status = Status.Idle,
-//                minSideBlockCnt = 20,
-//                start = Block(3, 5),
-//                dest = Block(14, 14),
-//                barrier = hashSetOf(),
-//                searchStrategy = SearchBFS.instance,
-//                searchProcessDelay = getMovementSpeedDelay(MOVEMENT_SPEED_DEFAULT.toFloat())
-//
-//            )
-//        )
-//    }
-//}

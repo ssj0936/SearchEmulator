@@ -22,6 +22,8 @@ val ThemeColor06 = Color(0xFFFFEB3B)
 val ThemeColor07 = Color(0xFFFFDA6C)
 val ThemeColor075 = Color(0xFFFFCE3E)
 val ThemeColor08 = Color(0xFFFAF6EB)
+val ThemeColor09 = Color(0xFFB69269)
+
 
 val ThemeColorPrimary = Color(0xFF3A5A40)
 val ThemeColorSecondary = Color(0xFF665542)
@@ -32,7 +34,6 @@ val DarkColorScheme = darkColorScheme(
     secondary = ThemeColorSecondary,
     tertiary = ThemeColorTertiary,
     background = ThemeColor00
-
 )
 
 val LightColorScheme = lightColorScheme(
@@ -59,7 +60,9 @@ data class SearchingColor(
 
     val sliderThumbColors: Color = ThemeColor02,
     val sliderTrackColors: Color = ThemeColor03,
-    val sliderInactiveTrackColors: Color = ThemeColor05
+    val sliderInactiveTrackColors: Color = ThemeColor05,
+
+    val cardBorderColor:Color = ThemeColor02
 )
 
 fun searchingColorLight(
@@ -79,7 +82,8 @@ fun searchingColorLight(
     themeColorPrimary: Color = ThemeColor02,
     sliderThumbColors: Color = themeColorPrimary,
     sliderTrackColors: Color = ThemeColor03,
-    sliderInactiveTrackColors: Color = ThemeColor055
+    sliderInactiveTrackColors: Color = ThemeColor055,
+    cardBorderColor:Color = ThemeColor05
 ): SearchingColor = SearchingColor(
     colorBlockBackground = colorBlockBackground,
     colorBlockStart = colorBlockStart,
@@ -96,16 +100,17 @@ fun searchingColorLight(
     buttonOutlineContentPressedColors = buttonOutlineContentPressedColors,
     sliderThumbColors = sliderThumbColors,
     sliderTrackColors = sliderTrackColors,
-    sliderInactiveTrackColors = sliderInactiveTrackColors
+    sliderInactiveTrackColors = sliderInactiveTrackColors,
+    cardBorderColor = cardBorderColor
 )
 
 fun searchingColorDark(
-    colorBlockBackground: Color = ThemeColor08,
+    colorBlockBackground: Color = ThemeColor01,
     colorBlockStart: Color = ThemeColor03,
     colorBlockDest: Color = ThemeColor06,
-    colorBlockBarrier: Color = ThemeColor08,
-    colorBlockPassed: Color = ThemeColor045,
-    colorBlockPath: Color = ThemeColor025,
+    colorBlockBarrier: Color = ThemeColor02,
+    colorBlockPassed: Color = ThemeColor05,
+    colorBlockPath: Color = ThemeColor04,
     colorBlockTail: Color = ThemeColor07,
     buttonColors: Color = ThemeColor04,
     buttonContentColors: Color = ThemeColor05,
