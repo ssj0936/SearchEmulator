@@ -113,7 +113,6 @@ val searchStrategyButtons = listOf<ToggleButtonOption>(
     ToggleButtonOption("DFS", null/*R.drawable.baseline_search_24*/, SearchAlgo.SEARCH_DFS)
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlPanel(
     modifier: Modifier = Modifier,

@@ -73,13 +73,13 @@ fun EmulatorPage(
             SnackbarHost(hostState = snackbarHostState)
         }
     ) { paddingValues ->
-        if (showBottomSheet) {
-            BottomSheetView(
-                onDismissRequest = { showBottomSheet = false },
-                sheetState = sheetState,
-                scope = scope
-            )
-        }
+        BottomSheetView(
+            isShow = {showBottomSheet},
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = sheetState,
+            scope = scope
+        )
+
 
         Box(
             modifier = Modifier
@@ -121,15 +121,17 @@ fun EmulatorPage(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BottomSheetView(
+    isShow:()->Boolean,
     onDismissRequest: () -> Unit,
     sheetState: SheetState,
     scope: CoroutineScope,
     viewModel: EmulatorViewModel = hiltViewModel()
 ) {
+    if(!isShow()) return
+
     val scrollState: ScrollState = rememberScrollState()
     var description by remember{ mutableStateOf<Description?>(null) }
     val animationValue = remember { Animatable(0f) }
-
     SideEffect {
         description = null
         scope.launch {
